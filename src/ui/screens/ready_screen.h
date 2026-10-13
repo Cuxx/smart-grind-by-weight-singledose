@@ -18,6 +18,7 @@ private:
     lv_obj_t* manual_weight_label;
     lv_obj_t* manual_scale_status_label;
     lv_obj_t* manual_tare_button;
+    lv_obj_t* manual_safety_label;
     lv_obj_t* profile_tabs[3];
     lv_obj_t* weight_labels[3];
     lv_obj_t* wifi_tab;
@@ -50,6 +51,7 @@ public:
     void hide();
     void update_profile_values(const float values[3], GrindMode mode);
     void update_manual_scale(float weight, bool available, bool taring);
+    void update_single_dose_timeout(uint32_t seconds);
     void update_network_status();
     void set_active_tab(int tab);
     void set_profile_long_press_handler(lv_event_cb_t handler);

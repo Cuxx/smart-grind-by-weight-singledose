@@ -69,6 +69,8 @@ void MenuScreen::create(BluetoothManager* bluetooth, GrindController* grind_ctrl
     coast_ratio_label = nullptr;
     motor_latency_slider = nullptr;
     motor_latency_label = nullptr;
+    single_dose_timeout_slider = nullptr;
+    single_dose_timeout_label = nullptr;
     auto_start_threshold_slider = nullptr;
     auto_start_threshold_label = nullptr;
     display_off_toggle = nullptr;
@@ -573,14 +575,14 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
         2,
         LV_FLEX_FLOW_ROW,
         0,  // Weight initially selected
-        135, 100,  // Width, Height
+        135, 50,  // Width, Height
         grind_mode_callback,
         this
     );
 
     // Descriptive label for swipe functionality
     lv_obj_t* swipe_desc_label = lv_label_create(parent);
-    lv_label_set_text(swipe_desc_label, "Enable swiping vertically to switch between Weight/Time modes");
+    lv_label_set_text(swipe_desc_label, "Enable swiping vertically to switch between Weight and Time modes");
     lv_obj_set_style_text_font(swipe_desc_label, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(swipe_desc_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
     lv_obj_set_style_margin_bottom(swipe_desc_label, 10, 0);
@@ -602,6 +604,14 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
     create_description_label(parent, "Use a value below the empty cup or portafilter weight to prevent accidental starts.");
     create_description_label(parent, "Exit the completion screen once that cup weight drops away.");
     create_toggle_row(parent, "Return", &auto_return_toggle);
+
+    // Single Dose section
+    create_separator(parent, "Single Dose");
+    create_description_label(parent, "Safety cutoff to automatically stop the motor during single dose grinding.");
+    create_slider_row(parent, "Safety limit", &single_dose_timeout_label, &single_dose_timeout_slider,
+                      lv_color_hex(THEME_COLOR_ACCENT),
+                      GRIND_SINGLE_DOSE_TIMEOUT_MIN_S,
+                      GRIND_SINGLE_DOSE_TIMEOUT_MAX_S);
 
     // Grinder Purging section
     create_separator(parent, "Purging");
@@ -697,6 +707,12 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::MOTOR_LATENCY_SLIDER)));
         lv_obj_add_event_cb(motor_latency_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_RELEASED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::MOTOR_LATENCY_SLIDER_RELEASED)));
+    }
+    if (single_dose_timeout_slider) {
+        lv_obj_add_event_cb(single_dose_timeout_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::SINGLE_DOSE_TIMEOUT_SLIDER)));
+        lv_obj_add_event_cb(single_dose_timeout_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_RELEASED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::SINGLE_DOSE_TIMEOUT_SLIDER_RELEASED)));
     }
 }
 
@@ -1193,6 +1209,16 @@ void MenuScreen::update_motor_latency_label(float latency_ms) {
     lv_label_set_text(motor_latency_label, buffer);
 }
 
+void MenuScreen::update_single_dose_timeout_display(uint32_t seconds) {
+    if (!single_dose_timeout_label) return;
+    const uint32_t clamped = std::clamp(seconds,
+                                        static_cast<uint32_t>(GRIND_SINGLE_DOSE_TIMEOUT_MIN_S),
+                                        static_cast<uint32_t>(GRIND_SINGLE_DOSE_TIMEOUT_MAX_S));
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "Safety limit: %lus", static_cast<unsigned long>(clamped));
+    lv_label_set_text(single_dose_timeout_label, buffer);
+}
+
 void MenuScreen::update_auto_start_threshold_label(float threshold_g) {
     if (!auto_start_threshold_label) return;
     const float clamped = std::clamp(threshold_g,
@@ -1455,6 +1481,7 @@ void MenuScreen::update_grind_mode_toggles() {
     int mode_index = 0; // Default to Weight (index 0)
     int grinder_purge_mode_index = GRIND_PURGE_MODE_DEFAULT;  // Default to Purge
     float grinder_purge_amount_g = GRIND_PURGE_AMOUNT_DEFAULT_G;  // Default to 1.0g
+    uint32_t single_dose_timeout_s = GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S;
     if (hardware_manager) {
         Preferences* main_prefs = hardware_manager->get_preferences();
         if (main_prefs) {
@@ -1462,6 +1489,7 @@ void MenuScreen::update_grind_mode_toggles() {
             mode_index = (stored_mode == static_cast<int>(GrindMode::TIME)) ? 1 : 0;
             grinder_purge_mode_index = main_prefs->getInt(GrindController::PREF_KEY_GRINDER_MODE, GRIND_PURGE_MODE_DEFAULT);
             grinder_purge_amount_g = main_prefs->getFloat(GrindController::PREF_KEY_GRINDER_AMOUNT_G, GRIND_PURGE_AMOUNT_DEFAULT_G);
+            single_dose_timeout_s = main_prefs->getUInt(GrindController::PREF_KEY_SINGLE_DOSE_TIMEOUT_S, GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S);
         }
     }
 
@@ -1579,4 +1607,15 @@ void MenuScreen::update_grind_mode_toggles() {
         lv_slider_set_value(motor_latency_slider, slider_value, LV_ANIM_OFF);
     }
     update_motor_latency_label(motor_latency_ms);
+
+    if (grind_controller) {
+        single_dose_timeout_s = grind_controller->get_single_dose_timeout_s();
+    }
+    if (single_dose_timeout_slider) {
+        const uint32_t clamped_sd = std::clamp(single_dose_timeout_s,
+                                               static_cast<uint32_t>(GRIND_SINGLE_DOSE_TIMEOUT_MIN_S),
+                                               static_cast<uint32_t>(GRIND_SINGLE_DOSE_TIMEOUT_MAX_S));
+        lv_slider_set_value(single_dose_timeout_slider, clamped_sd, LV_ANIM_OFF);
+    }
+    update_single_dose_timeout_display(single_dose_timeout_s);
 }

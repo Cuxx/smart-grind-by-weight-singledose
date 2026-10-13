@@ -6,6 +6,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
+#include "../config/constants.h"
 
 class GrindController;
 class HardwareManager;
@@ -14,6 +15,7 @@ class ProfileController;
 struct DeviceSettingsUpdate {
     int current_profile = 1;
     int grind_mode = 0;
+    uint32_t single_dose_timeout_s = GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S;
     float profile_weights[3]{};
     float profile_times[3]{};
     bool auto_start = false;

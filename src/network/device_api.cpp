@@ -202,14 +202,14 @@ bool DeviceApi::process_commands() {
                 const auto profile = profile_controller_->snapshot();
                 const GrindMode mode = profile.mode;
                 WeightSensor* sensor = hardware_->get_weight_sensor();
-                if (mode == GrindMode::WEIGHT &&
+                if ((mode == GrindMode::WEIGHT || mode == GrindMode::SINGLE_DOSE) &&
                     (!sensor || sensor->has_hardware_fault())) {
                     send_ack(command, "start", false, "load cell is not ready");
                     break;
                 }
                 grind_controller_->set_grind_profile_id(profile.current_profile);
-                const float target_weight = profile.profiles[profile.current_profile].weight;
-                const uint32_t target_time_ms = static_cast<uint32_t>(
+                const float target_weight = (mode == GrindMode::SINGLE_DOSE) ? 0.0f : profile.profiles[profile.current_profile].weight;
+                const uint32_t target_time_ms = (mode == GrindMode::SINGLE_DOSE) ? 0 : static_cast<uint32_t>(
                     profile.profiles[profile.current_profile].time_seconds * 1000.0f + 0.5f);
                 const bool started = grind_controller_->start_grind(target_weight, target_time_ms, mode);
                 send_ack(command, "start", started, started ? "grind started" : "grind could not start");
@@ -560,6 +560,11 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
         }
     }
     settings.auto_return = form_bool(value("auto_return"));
+    if (request->hasParam("single_dose_timeout_s", true)) {
+        settings.single_dose_timeout_s = value("single_dose_timeout_s").toInt();
+    } else {
+        settings.single_dose_timeout_s = grind_controller_ ? grind_controller_->get_single_dose_timeout_s() : GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S;
+    }
     settings.purge_mode = value("purge_mode").toInt();
     settings.purge_amount_g = value("purge_amount_g").toFloat();
     settings.freshness_hours = value("freshness_hours").toFloat();
@@ -598,6 +603,8 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
 
     bool valid = settings.current_profile >= 0 && settings.current_profile < USER_PROFILE_COUNT &&
                  settings.grind_mode >= 0 && settings.grind_mode <= 1 &&
+                 settings.single_dose_timeout_s >= GRIND_SINGLE_DOSE_TIMEOUT_MIN_S &&
+                 settings.single_dose_timeout_s <= GRIND_SINGLE_DOSE_TIMEOUT_MAX_S &&
                  std::isfinite(settings.auto_start_threshold_g) &&
                  settings.auto_start_threshold_g >= USER_AUTO_GRIND_TRIGGER_MIN_G &&
                  settings.auto_start_threshold_g <= USER_AUTO_GRIND_TRIGGER_MAX_G &&
@@ -682,6 +689,7 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     saved = (grinder->putFloat(GrindController::PREF_KEY_GRIND_FRESHNESS_HOURS, settings.freshness_hours) == sizeof(float)) && saved;
     saved = grind_controller_->save_coast_ratio(settings.coast_ratio) && saved;
     saved = grind_controller_->save_motor_latency(settings.motor_latency_ms) && saved;
+    saved = grind_controller_->save_single_dose_timeout(settings.single_dose_timeout_s) && saved;
 
     auto put_bool = [](const char* name_space, const char* key, bool value) {
         Preferences preferences;
@@ -802,6 +810,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"purge\":{\"mode\":%d,\"amount_g\":%.2f,\"freshness_hours\":%.2f},"
              "\"coast_ratio\":%.2f,\"motor_latency_ms\":%.0f,"
              "\"logging_enabled\":%s,\"swipe_enabled\":%s,"
+             "\"single_dose_timeout_s\":%lu,"
              "\"display\":{\"brightness\":%d,\"screensaver_brightness\":%d,"
              "\"screensaver_startup\":%s,\"screensaver_sleep\":%s,"
              "\"screensaver_idle_timeout_s\":%u,\"screensaver_startup_timeout_s\":%u,"
@@ -822,6 +831,7 @@ void DeviceApi::refresh_settings_cache() {
              grind_controller_->get_motor_response_latency(),
              read_bool("logging", "enabled", true) ? "true" : "false",
              read_bool("swipe", "enabled", false) ? "true" : "false",
+             static_cast<unsigned long>(grind_controller_ ? grind_controller_->get_single_dose_timeout_s() : GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S),
              static_cast<int>(read_brightness("normal", USER_SCREEN_BRIGHTNESS_NORMAL) * 100.0f + 0.5f),
              static_cast<int>(read_brightness("screensaver", USER_SCREEN_BRIGHTNESS_DIMMED) * 100.0f + 0.5f),
              read_bool("screensaver", "startup", false) ? "true" : "false",
@@ -891,7 +901,7 @@ String DeviceApi::build_state_message() {
              static_cast<unsigned long>(sequence_.fetch_add(1) + 1), static_cast<unsigned long>(millis()),
              grind_controller_->is_active() ? "true" : "false",
              api_phase_name(*grind_controller_),
-             mode == GrindMode::TIME ? "time" : mode == GrindMode::MANUAL ? "manual" : "weight",
+             mode == GrindMode::TIME ? "time" : mode == GrindMode::SINGLE_DOSE ? "singledose" : mode == GrindMode::MANUAL ? "manual" : "weight",
              idle ? profile.current_profile : grind_controller_->get_session_descriptor().profile_id,
              grind_controller_->get_current_progress_percent(),
              target_weight,

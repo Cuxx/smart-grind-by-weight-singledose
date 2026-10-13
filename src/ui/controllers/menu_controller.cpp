@@ -63,6 +63,8 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::COAST_RATIO_SLIDER_RELEASED, [this](lv_event_t*) { handle_coast_ratio_slider_released(); });
     EventBridgeLVGL::register_handler(ET::MOTOR_LATENCY_SLIDER, [this](lv_event_t*) { handle_motor_latency_slider(); });
     EventBridgeLVGL::register_handler(ET::MOTOR_LATENCY_SLIDER_RELEASED, [this](lv_event_t*) { handle_motor_latency_slider_released(); });
+    EventBridgeLVGL::register_handler(ET::SINGLE_DOSE_TIMEOUT_SLIDER, [this](lv_event_t*) { handle_single_dose_timeout_slider(); });
+    EventBridgeLVGL::register_handler(ET::SINGLE_DOSE_TIMEOUT_SLIDER_RELEASED, [this](lv_event_t*) { handle_single_dose_timeout_slider_released(); });
 
     EventBridgeLVGL::register_handler(ET::BRIGHTNESS_NORMAL_SLIDER, [this](lv_event_t*) { handle_brightness_normal_slider(); });
     EventBridgeLVGL::register_handler(ET::BRIGHTNESS_NORMAL_SLIDER_RELEASED, [this](lv_event_t*) { handle_brightness_normal_slider_released(); });
@@ -623,6 +625,45 @@ void MenuUIController::handle_motor_latency_slider_released() {
     }
     ui_manager_->menu_screen.update_motor_latency_label(static_cast<float>(latency_ms));
     LOG_DEBUG_PRINTF("Motor response latency manually set to: %dms\n", latency_ms);
+}
+
+void MenuUIController::handle_single_dose_timeout_slider() {
+    if (!ui_manager_) return;
+    auto* slider = ui_manager_->menu_screen.get_single_dose_timeout_slider();
+    if (!slider) return;
+
+    int seconds = lv_slider_get_value(slider);
+    seconds = ((seconds + GRIND_SINGLE_DOSE_TIMEOUT_STEP_S / 2) / GRIND_SINGLE_DOSE_TIMEOUT_STEP_S) * GRIND_SINGLE_DOSE_TIMEOUT_STEP_S;
+    seconds = std::clamp(seconds, static_cast<int>(GRIND_SINGLE_DOSE_TIMEOUT_MIN_S), static_cast<int>(GRIND_SINGLE_DOSE_TIMEOUT_MAX_S));
+    ui_manager_->menu_screen.update_single_dose_timeout_display(static_cast<uint32_t>(seconds));
+    ui_manager_->ready_screen.update_single_dose_timeout(static_cast<uint32_t>(seconds));
+}
+
+void MenuUIController::handle_single_dose_timeout_slider_released() {
+    if (!ui_manager_) return;
+    auto* slider = ui_manager_->menu_screen.get_single_dose_timeout_slider();
+    if (!slider) return;
+
+    int seconds = lv_slider_get_value(slider);
+    seconds = ((seconds + GRIND_SINGLE_DOSE_TIMEOUT_STEP_S / 2) / GRIND_SINGLE_DOSE_TIMEOUT_STEP_S) * GRIND_SINGLE_DOSE_TIMEOUT_STEP_S;
+    seconds = std::clamp(seconds, static_cast<int>(GRIND_SINGLE_DOSE_TIMEOUT_MIN_S), static_cast<int>(GRIND_SINGLE_DOSE_TIMEOUT_MAX_S));
+    lv_slider_set_value(slider, seconds, LV_ANIM_OFF);
+
+    auto* grind_controller = ui_manager_->get_grind_controller();
+    if (grind_controller) {
+        if (!grind_controller->save_single_dose_timeout(static_cast<uint32_t>(seconds))) {
+            seconds = static_cast<int>(grind_controller->get_single_dose_timeout_s());
+            lv_slider_set_value(slider, seconds, LV_ANIM_OFF);
+            LOG_BLE("Could not save single dose timeout; retaining active value\n");
+        }
+    }
+
+    LOG_DEBUG_PRINT("Single dose safety timeout set to: ");
+    LOG_DEBUG_PRINT(seconds);
+    LOG_DEBUG_PRINTLN("s");
+
+    ui_manager_->menu_screen.update_single_dose_timeout_display(static_cast<uint32_t>(seconds));
+    ui_manager_->ready_screen.update_single_dose_timeout(static_cast<uint32_t>(seconds));
 }
 
 void MenuUIController::handle_brightness_normal_slider() {

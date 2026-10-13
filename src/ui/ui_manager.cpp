@@ -95,6 +95,9 @@ void UIManager::create_ui() {
 
     // Create all screens
     ready_screen.create();
+    if (grind_controller) {
+        ready_screen.update_single_dose_timeout(grind_controller->get_single_dose_timeout_s());
+    }
     edit_screen.create();
     grinding_screen.init(hardware_manager->get_preferences());
     grinding_screen.create();
@@ -149,6 +152,9 @@ void UIManager::update() {
             screen_timeout_controller_->apply_runtime_settings(true)) && runtime_applied;
         if (ready_controller_) ready_controller_->refresh_profiles();
         ready_screen.set_active_tab(current_tab);
+        if (grind_controller) {
+            ready_screen.update_single_dose_timeout(grind_controller->get_single_dose_timeout_s());
+        }
         if (menu_screen.is_visible()) {
             menu_screen.update_brightness_sliders();
             menu_screen.update_bluetooth_startup_toggle();
@@ -492,6 +498,12 @@ void UIManager::update_auto_actions() {
     }
 
     if (!auto_actions_.auto_return_enabled) {
+        return;
+    }
+
+    // In Single Dose mode, the user deliberately inspects the delivered dose on the
+    // completion screen; return is handled by the dedicated 5-second timer or OK button.
+    if (current_mode == GrindMode::SINGLE_DOSE) {
         return;
     }
 

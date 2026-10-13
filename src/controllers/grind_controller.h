@@ -180,6 +180,9 @@ private:
     bool grinder_purged_since_boot;      // Tracks if grinder has been used since boot (RAM only)
     uint64_t last_purge_runtime_ms;      // Runtime when last grind completed (persisted)
 
+    // Single Dose safety timeout (seconds, configurable 60-300s)
+    uint32_t single_dose_timeout_s_ = GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S;
+
 public:
     using GrindSessionResult = ::GrindSessionResult;
 
@@ -243,6 +246,7 @@ public:
     static constexpr const char* PREF_KEY_GRIND_FRESHNESS_HOURS = "freshness_hrs";
     static constexpr const char* PREF_KEY_COAST_RATIO = "coast_ratio";
     static constexpr const char* PREF_KEY_LAST_GRIND_RUNTIME = "last_grind_ms";
+    static constexpr const char* PREF_KEY_SINGLE_DOSE_TIMEOUT_S = "sd_timeout_s";
     GrindMode get_mode() const { const auto control_lock = lock_control(); return mode; }
     GrindSessionDescriptor get_session_descriptor() const { const auto control_lock = lock_control(); return session_descriptor; }
     
@@ -275,6 +279,12 @@ public:
     void set_coast_ratio(float value);
     void load_coast_ratio();
     bool save_coast_ratio(float value);
+
+    // Single Dose safety timeout accessors
+    uint32_t get_single_dose_timeout_s() const { const auto control_lock = lock_control(); return single_dose_timeout_s_; }
+    void set_single_dose_timeout_s(uint32_t seconds);
+    void load_single_dose_timeout();
+    bool save_single_dose_timeout(uint32_t seconds);
 
     // Grind freshness accessors
     bool get_grinder_purged_since_boot() const { const auto control_lock = lock_control(); return grinder_purged_since_boot; }

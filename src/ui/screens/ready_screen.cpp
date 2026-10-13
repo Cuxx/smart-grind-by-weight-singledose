@@ -110,7 +110,7 @@ void ReadyScreen::create_manual_page(lv_obj_t* parent) {
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* title = lv_label_create(parent);
-    lv_label_set_text(title, "MANUAL");
+    lv_label_set_text(title, "SINGLE DOSE");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_36, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
 
@@ -130,11 +130,11 @@ void ReadyScreen::create_manual_page(lv_obj_t* parent) {
     manual_tare_button = create_button(parent, "TARE", lv_color_hex(THEME_COLOR_PRIMARY),
                                        230, 68, &lv_font_montserrat_28);
 
-    lv_obj_t* safety_label = lv_label_create(parent);
-    lv_label_set_text(safety_label, "30 SECOND LIMIT");
-    lv_obj_set_style_text_font(safety_label, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(safety_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
-    lv_obj_set_style_text_align(safety_label, LV_TEXT_ALIGN_CENTER, 0);
+    manual_safety_label = lv_label_create(parent);
+    lv_label_set_text(manual_safety_label, "60 SECOND LIMIT");
+    lv_obj_set_style_text_font(manual_safety_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(manual_safety_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
+    lv_obj_set_style_text_align(manual_safety_label, LV_TEXT_ALIGN_CENTER, 0);
 }
 
 void ReadyScreen::update_manual_scale(float weight, bool available, bool taring) {
@@ -303,12 +303,28 @@ void ReadyScreen::hide() {
 
 void ReadyScreen::update_profile_values(const float values[3], GrindMode mode) {
     for (int i = 0; i < 3; i++) {
+        if (profile_tabs[i]) {
+            lv_obj_invalidate(profile_tabs[i]);
+        }
         if (weight_labels[i]) {
             char text[24];
             format_ready_value(text, sizeof(text), mode, values[i]);
             lv_label_set_text(weight_labels[i], text);
         }
+        if (profile_tabs[i]) {
+            lv_obj_invalidate(profile_tabs[i]);
+        }
     }
+    if (screen) {
+        lv_obj_invalidate(screen);
+    }
+}
+
+void ReadyScreen::update_single_dose_timeout(uint32_t seconds) {
+    if (!manual_safety_label) return;
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%lu SECOND LIMIT", static_cast<unsigned long>(seconds));
+    lv_label_set_text(manual_safety_label, buf);
 }
 
 void ReadyScreen::set_active_tab(int tab) {

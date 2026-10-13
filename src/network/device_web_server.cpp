@@ -529,7 +529,7 @@ void DeviceWebServer::configure_routes() {
                 "\"motor_time_ms\":%lu,\"pulses\":%u,\"result\":\"%s\","
                 "\"events\":%u,\"measurements\":%u,\"schema\":%u}",
                 static_cast<unsigned long>(id), static_cast<unsigned long>(session.session_timestamp),
-                session.profile_id, session.grind_mode == 1 ? "time" : "weight",
+                session.profile_id, session.grind_mode == 1 ? "time" : (session.grind_mode == 2 ? "singledose" : "weight"),
                 session.target_weight, static_cast<unsigned long>(session.target_time_ms),
                 session.final_weight, session.error_grams, static_cast<long>(session.time_error_ms),
                 static_cast<unsigned long>(session.total_time_ms),
