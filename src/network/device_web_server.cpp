@@ -199,6 +199,13 @@ void DeviceWebServer::begin() {
     LOG_BLE("[WEB] HTTP service listening on port 80\n");
 }
 
+void DeviceWebServer::end() {
+    if (!started_) return;
+    server_.end();
+    started_ = false;
+    LOG_BLE("[WEB] HTTP service stopped\n");
+}
+
 void DeviceWebServer::update() {
     device_api.update();
     const std::lock_guard<std::recursive_mutex> ota_lock(ota_mutex_);

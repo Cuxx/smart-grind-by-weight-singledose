@@ -347,6 +347,14 @@ void MenuScreen::create_network_page(lv_obj_t* parent) {
     lv_obj_set_scroll_dir(parent, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(parent, LV_SCROLLBAR_MODE_AUTO);
 
+    create_toggle_row(parent, "Enabled", &wifi_toggle);
+
+    using ET = EventBridgeLVGL::EventType;
+    if (wifi_toggle) {
+        lv_obj_add_event_cb(wifi_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::WIFI_TOGGLE)));
+    }
+
     network_status_label = lv_label_create(parent);
     lv_obj_set_style_text_font(network_status_label, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(network_status_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
@@ -386,6 +394,14 @@ void MenuScreen::create_network_page(lv_obj_t* parent) {
 }
 
 void MenuScreen::update_network_status() {
+    if (wifi_toggle) {
+        if (network_manager.is_enabled()) {
+            lv_obj_add_state(wifi_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(wifi_toggle, LV_STATE_CHECKED);
+        }
+    }
+
     if (!network_status_label || !network_detail_label || !network_qr ||
         !network_update_label || !network_update_button) return;
 
@@ -395,7 +411,7 @@ void MenuScreen::update_network_status() {
     switch (network_manager.state()) {
         case NetworkState::WIFI_DISABLED:
             status = "Wi-Fi disabled";
-            detail = "Wi-Fi can be enabled after setup support is complete.";
+            detail = "Turn on toggle above to enable Wi-Fi.";
             break;
         case NetworkState::WIFI_NO_CREDENTIALS:
         case NetworkState::WIFI_SETUP_REQUIRED:

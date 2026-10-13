@@ -2,7 +2,10 @@
 
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <time.h>
+
+#include "device_web_server.h"
 
 #include "../config/build_info.h"
 #include "../config/constants.h"
@@ -180,6 +183,7 @@ void SmartGrindNetworkManager::begin_connection() {
         mdns_started_ = false;
     }
 
+    esp_wifi_start();
     WiFi.persistent(false);
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
@@ -197,6 +201,7 @@ bool SmartGrindNetworkManager::start_setup_access_point(const String& ssid, cons
         mdns_started_ = false;
     }
     WiFi.disconnect(true, false);
+    esp_wifi_start();
     // AP+STA keeps the setup network available while the STA radio scans for
     // nearby routers for the provisioning dropdown.
     WiFi.mode(WIFI_AP_STA);
@@ -238,9 +243,14 @@ void SmartGrindNetworkManager::stop_network() {
         MDNS.end();
         mdns_started_ = false;
     }
+    device_web_server.end();
+    WiFi.setAutoReconnect(false);
     WiFi.disconnect(true, false);
+    esp_wifi_disconnect();
     WiFi.mode(WIFI_OFF);
+    esp_wifi_stop();
     set_state(NetworkState::WIFI_DISABLED);
+    LOG_BLE("[WIFI] Wi-Fi disabled and radio powered down\n");
 }
 
 void SmartGrindNetworkManager::set_state(NetworkState state) {
