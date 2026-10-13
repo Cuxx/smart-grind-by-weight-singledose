@@ -503,7 +503,7 @@ void UIManager::update_auto_actions() {
 
     // In Single Dose mode, the user deliberately inspects the delivered dose on the
     // completion screen; return is handled by the dedicated 5-second timer or OK button.
-    if (current_mode == GrindMode::SINGLE_DOSE) {
+    if (current_mode == GrindMode::MANUAL) {
         return;
     }
 

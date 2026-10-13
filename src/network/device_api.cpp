@@ -202,14 +202,14 @@ bool DeviceApi::process_commands() {
                 const auto profile = profile_controller_->snapshot();
                 const GrindMode mode = profile.mode;
                 WeightSensor* sensor = hardware_->get_weight_sensor();
-                if ((mode == GrindMode::WEIGHT || mode == GrindMode::SINGLE_DOSE) &&
+                if (mode == GrindMode::WEIGHT &&
                     (!sensor || sensor->has_hardware_fault())) {
                     send_ack(command, "start", false, "load cell is not ready");
                     break;
                 }
                 grind_controller_->set_grind_profile_id(profile.current_profile);
-                const float target_weight = (mode == GrindMode::SINGLE_DOSE) ? 0.0f : profile.profiles[profile.current_profile].weight;
-                const uint32_t target_time_ms = (mode == GrindMode::SINGLE_DOSE) ? 0 : static_cast<uint32_t>(
+                const float target_weight = profile.profiles[profile.current_profile].weight;
+                const uint32_t target_time_ms = static_cast<uint32_t>(
                     profile.profiles[profile.current_profile].time_seconds * 1000.0f + 0.5f);
                 const bool started = grind_controller_->start_grind(target_weight, target_time_ms, mode);
                 send_ack(command, "start", started, started ? "grind started" : "grind could not start");
@@ -901,7 +901,7 @@ String DeviceApi::build_state_message() {
              static_cast<unsigned long>(sequence_.fetch_add(1) + 1), static_cast<unsigned long>(millis()),
              grind_controller_->is_active() ? "true" : "false",
              api_phase_name(*grind_controller_),
-             mode == GrindMode::TIME ? "time" : mode == GrindMode::SINGLE_DOSE ? "singledose" : mode == GrindMode::MANUAL ? "manual" : "weight",
+             mode == GrindMode::TIME ? "time" : mode == GrindMode::MANUAL ? "singledose" : "weight",
              idle ? profile.current_profile : grind_controller_->get_session_descriptor().profile_id,
              grind_controller_->get_current_progress_percent(),
              target_weight,

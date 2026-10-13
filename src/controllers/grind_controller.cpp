@@ -116,8 +116,7 @@ bool GrindController::start_grind(float target, uint32_t time_ms, GrindMode grin
     const auto control_lock = lock_control();
     if (phase != GrindPhase::IDLE) return false;
     const char* mode_name = grind_mode == GrindMode::TIME ? "TIME" :
-                            grind_mode == GrindMode::SINGLE_DOSE ? "SINGLE_DOSE" :
-                            grind_mode == GrindMode::MANUAL ? "MANUAL" : "WEIGHT";
+                            grind_mode == GrindMode::MANUAL ? "SINGLE_DOSE" : "WEIGHT";
     LOG_BLE("[%lums CONTROLLER] start_grind() called with target=%.1fg, time=%lums, mode=%s\n",
             millis(), target, (unsigned long)time_ms, mode_name);
 #ifndef SMART_GRIND_SIM
@@ -127,7 +126,7 @@ bool GrindController::start_grind(float target, uint32_t time_ms, GrindMode grin
     }
 #endif
     if (!grinder || !grinder->is_initialized()) return false;
-    if (grind_mode == GrindMode::WEIGHT || grind_mode == GrindMode::SINGLE_DOSE) {
+    if (grind_mode == GrindMode::WEIGHT || grind_mode == GrindMode::MANUAL) {
         if (!weight_sensor) return false;
         if (!weight_sensor->has_recent_sample()) {
             LOG_BLE("ERROR: Cannot start weight/single-dose grind - no fresh scale reading\n");
@@ -293,7 +292,7 @@ void GrindController::stop_grind() {
         return;
     }
 
-    if (mode == GrindMode::SINGLE_DOSE &&
+    if (mode == GrindMode::MANUAL &&
         (phase == GrindPhase::MANUAL_GRINDING || phase == GrindPhase::INITIALIZING ||
          phase == GrindPhase::SETUP || phase == GrindPhase::TARING || phase == GrindPhase::TARE_CONFIRM)) {
         grinder->stop();
@@ -306,18 +305,6 @@ void GrindController::stop_grind() {
         loop_data.display_weight = weight_sensor ? weight_sensor->get_display_weight() : 0.0f;
         final_measurement(loop_data);
         return;
-    }
-    
-    const uint32_t manual_runtime_ms =
-        (mode == GrindMode::MANUAL && time_grind_start_ms > 0)
-            ? millis() - time_grind_start_ms
-            : 0;
-    grinder->stop();
-    if (manual_runtime_ms > 0) {
-        FlashOpRequest request = {};
-        request.operation_type = FlashOpRequest::UPDATE_MANUAL_RUNTIME;
-        request.motor_runtime_ms = manual_runtime_ms;
-        queue_flash_operation(request);
     }
     
     // Cancelled grinds just discard PSRAM data and go to IDLE
@@ -372,7 +359,7 @@ void GrindController::continue_from_purge() {
 void GrindController::pause_grind() {
     const auto control_lock = lock_control();
     if ((phase != GrindPhase::TIME_GRINDING &&
-         !(phase == GrindPhase::MANUAL_GRINDING && mode == GrindMode::SINGLE_DOSE)) ||
+         !(phase == GrindPhase::MANUAL_GRINDING && mode == GrindMode::MANUAL)) ||
         grind_paused_) return;
 
     grind_paused_ = true;
@@ -382,13 +369,13 @@ void GrindController::pause_grind() {
     if (grinder) grinder->stop();
 
     LOG_BLE("[%lums CONTROLLER] %s grind paused\n", millis(),
-            mode == GrindMode::SINGLE_DOSE ? "Single dose" : "Time mode");
+            mode == GrindMode::MANUAL ? "Single dose" : "Time mode");
 }
 
 void GrindController::resume_grind() {
     const auto control_lock = lock_control();
     if ((phase != GrindPhase::TIME_GRINDING &&
-         !(phase == GrindPhase::MANUAL_GRINDING && mode == GrindMode::SINGLE_DOSE)) ||
+         !(phase == GrindPhase::MANUAL_GRINDING && mode == GrindMode::MANUAL)) ||
         !grind_paused_) return;
 
     uint32_t pause_duration = millis() - pause_start_ms_;
@@ -400,7 +387,7 @@ void GrindController::resume_grind() {
     if (grinder) grinder->start();
 
     LOG_BLE("[%lums CONTROLLER] %s grind resumed (paused %lums, total paused %lums)\n",
-            millis(), mode == GrindMode::SINGLE_DOSE ? "Single dose" : "Time mode",
+            millis(), mode == GrindMode::MANUAL ? "Single dose" : "Time mode",
             (unsigned long)pause_duration, (unsigned long)total_pause_ms_);
 }
 
@@ -475,18 +462,12 @@ void GrindController::update() {
                     queue_log_message("[SCALE] No vessel reference; removal guard disabled for this grind\n");
                 }
             }
-            if (mode == GrindMode::MANUAL) {
-                if (!grinder->is_grinding()) grinder->start();
-                time_grind_start_ms = loop_data.now;
-                switch_phase(GrindPhase::MANUAL_GRINDING, loop_data);
-            } else {
-                grind_logger.start_grind_session(session_descriptor, pre_tare_weight);
-            }
+            grind_logger.start_grind_session(session_descriptor, pre_tare_weight);
             if (mode == GrindMode::TIME) {
                 if (!grinder->is_grinding()) grinder->start();
                 time_grind_start_ms = loop_data.now;
                 switch_phase(GrindPhase::TIME_GRINDING, loop_data);
-            } else if (mode == GrindMode::WEIGHT || mode == GrindMode::SINGLE_DOSE) {
+            } else if (mode == GrindMode::WEIGHT || mode == GrindMode::MANUAL) {
                 switch_phase(GrindPhase::TARING, loop_data);
             }
             break;
@@ -510,7 +491,7 @@ void GrindController::update() {
                     time_grind_start_ms = loop_data.now;
                     if (mode == GrindMode::TIME) {
                         switch_phase(GrindPhase::TIME_GRINDING, loop_data);
-                    } else if (mode == GrindMode::SINGLE_DOSE) {
+                    } else if (mode == GrindMode::MANUAL) {
                         switch_phase(GrindPhase::MANUAL_GRINDING, loop_data);
                     } else {
                         // Always run chute operation for weight mode
@@ -715,10 +696,10 @@ void GrindController::update() {
         queue_log_message("--- GRIND TIMEOUT in phase %s ---\n", get_phase_name(timeout_phase));
         char timeout_msg[24];
         const char* phase_name = get_phase_name(timeout_phase);
-        if (mode == GrindMode::SINGLE_DOSE && grind_paused_ && pause_start_ms_ > 0 &&
+        if (mode == GrindMode::MANUAL && grind_paused_ && pause_start_ms_ > 0 &&
             (millis() - pause_start_ms_ >= GRIND_SINGLE_DOSE_PAUSE_TIMEOUT_MS)) {
             snprintf(timeout_msg, sizeof(timeout_msg), "Pause timeout");
-        } else if (mode == GrindMode::SINGLE_DOSE || mode == GrindMode::MANUAL) {
+        } else if (mode == GrindMode::MANUAL) {
             snprintf(timeout_msg, sizeof(timeout_msg), "%lus limit", static_cast<unsigned long>(single_dose_timeout_s_));
         } else if (phase_name && phase_name[0]) {
             char phase_short[5];
@@ -955,7 +936,7 @@ void GrindController::switch_phase(GrindPhase new_phase, const GrindLoopData& lo
 
 bool GrindController::check_timeout() const {
     // Check 5-minute pause timeout
-    if (mode == GrindMode::SINGLE_DOSE && grind_paused_ && pause_start_ms_ > 0) {
+    if (mode == GrindMode::MANUAL && grind_paused_ && pause_start_ms_ > 0) {
         if (millis() - pause_start_ms_ >= GRIND_SINGLE_DOSE_PAUSE_TIMEOUT_MS) {
             return true;
         }
@@ -966,7 +947,7 @@ bool GrindController::check_timeout() const {
     unsigned long current_pause_ms = (grind_paused_ && pause_start_ms_ > 0)
                                    ? (millis() - pause_start_ms_) : 0;
     unsigned long active_time_ms = elapsed_ms - timeout_offset_ms - current_pause_ms;
-    const uint32_t timeout_sec = (mode == GrindMode::MANUAL || mode == GrindMode::SINGLE_DOSE)
+    const uint32_t timeout_sec = (mode == GrindMode::MANUAL)
                                      ? single_dose_timeout_s_
                                      : GRIND_TIMEOUT_SEC;
     return active_time_ms >= (timeout_sec * 1000);
@@ -978,12 +959,11 @@ bool GrindController::is_active() const {
 }
 
 int GrindController::get_progress_percent() const {
-    if (session_descriptor.mode == GrindMode::MANUAL) return 0;
+    if (session_descriptor.mode == GrindMode::MANUAL) {
+        return (phase == GrindPhase::COMPLETED) ? 100 : 0;
+    }
     if (active_strategy && session_descriptor.mode == GrindMode::TIME) {
         return active_strategy->progress_percent(session_descriptor, *this);
-    }
-    if (session_descriptor.mode == GrindMode::SINGLE_DOSE) {
-        return (phase == GrindPhase::COMPLETED) ? 100 : 0;
     }
 
     if (target_weight <= 0) return 0;

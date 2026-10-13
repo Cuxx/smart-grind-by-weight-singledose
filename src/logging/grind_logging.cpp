@@ -170,9 +170,9 @@ void GrindLogger::end_grind_session(const char* final_result, float final_weight
                                          static_cast<int32_t>(current_session->target_time_ms);
         // Weight error is not meaningful for time-based grinds
         current_session->error_grams = 0.0f;
-    } else if (mode == GrindMode::SINGLE_DOSE) {
+    } else if (mode == GrindMode::MANUAL) {
         current_session->time_error_ms = 0;
-        // Target weight is not predetermined in Single Dose; error is not meaningful
+        // Target weight is not predetermined in Single Dose / Manual; error is not meaningful
         current_session->error_grams = 0.0f;
     } else {
         current_session->time_error_ms = 0;
@@ -190,7 +190,7 @@ void GrindLogger::end_grind_session(const char* final_result, float final_weight
                                 termination_reason == GrindTerminationReason::MAX_PULSES);
 
     if (is_successful_grind) {
-        if (mode == GrindMode::SINGLE_DOSE) {
+        if (mode == GrindMode::MANUAL) {
             statistics_manager.update_single_dose_grind(
                 final_weight,
                 current_session->total_motor_on_time_ms
@@ -214,7 +214,7 @@ void GrindLogger::end_grind_session(const char* final_result, float final_weight
     logging_prefs.end();
 
     const char* mode_name = (mode == GrindMode::TIME) ? "TIME" :
-                            (mode == GrindMode::SINGLE_DOSE ? "SINGLE_DOSE" : "WEIGHT");
+                            (mode == GrindMode::MANUAL ? "SINGLE_DOSE" : "WEIGHT");
 
     if (!is_cancelled && logging_enabled) {
         const bool saved = flush_session_to_flash();

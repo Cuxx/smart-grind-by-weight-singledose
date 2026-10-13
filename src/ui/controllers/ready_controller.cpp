@@ -73,7 +73,7 @@ void ReadyUIController::handle_tab_change(int tab) {
 
     ui_manager_->current_tab = tab;
     if (tab == ReadyScreen::MANUAL_TAB_INDEX) {
-        ui_manager_->current_mode = GrindMode::SINGLE_DOSE;
+        ui_manager_->current_mode = GrindMode::MANUAL;
         ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
     } else if (ui_manager_->profile_controller && ReadyScreen::is_profile_tab(tab)) {
         ui_manager_->profile_controller->set_current_profile(ReadyScreen::profile_index_for_tab(tab));
