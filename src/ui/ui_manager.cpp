@@ -155,12 +155,19 @@ void UIManager::update() {
         if (grind_controller) {
             ready_screen.update_single_dose_timeout(grind_controller->get_single_dose_timeout_s());
         }
+        rebuild_ready_tabs();
+        if (status_indicator_controller_) {
+            status_indicator_controller_->update_wifi_status_icon();
+            status_indicator_controller_->update_ble_status_icon();
+        }
         if (menu_screen.is_visible()) {
             menu_screen.update_brightness_sliders();
             menu_screen.update_bluetooth_startup_toggle();
             menu_screen.update_logging_toggle();
             menu_screen.update_grind_mode_toggles();
             menu_screen.update_screensaver_toggles();
+            menu_screen.update_network_status();
+            menu_screen.update_ble_status();
         }
         device_api.complete_settings_application(runtime_applied);
     }

@@ -17,6 +17,8 @@
 #include "../system/operation_interlock.h"
 #include "device_web_server.h"
 #include "gaggimate_status_client.h"
+#include "network_manager.h"
+#include "../bluetooth/manager.h"
 
 DeviceApi device_api;
 
@@ -112,11 +114,13 @@ const char* api_phase_name(const GrindController& controller) {
 }
 
 void DeviceApi::init(AsyncWebServer* server, HardwareManager* hardware,
-                     GrindController* grind_controller, ProfileController* profile_controller) {
+                     GrindController* grind_controller, ProfileController* profile_controller,
+                     BluetoothManager* bluetooth_manager) {
     if (initialized_ || !server || !hardware || !grind_controller || !profile_controller) return;
     hardware_ = hardware;
     grind_controller_ = grind_controller;
     profile_controller_ = profile_controller;
+    bluetooth_manager_ = bluetooth_manager;
     command_queue_ = xQueueCreate(8, sizeof(Command));
     settings_mutex_ = xSemaphoreCreateMutex();
     if (!command_queue_ || !settings_mutex_) {
@@ -600,6 +604,18 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                                       : gaggimate_status_client.configured_host();
     strncpy(settings.gaggimate_host, gaggimate_host.c_str(), sizeof(settings.gaggimate_host) - 1);
     settings.bluetooth_startup = form_bool(value("bluetooth_startup"));
+    if (request->hasParam("wifi_tab", true)) {
+        settings.has_wifi_tab = true;
+        settings.wifi_tab = form_bool(value("wifi_tab"));
+    }
+    if (request->hasParam("wifi_icon_menu", true)) {
+        settings.has_wifi_icon_menu = true;
+        settings.wifi_icon_menu = form_bool(value("wifi_icon_menu"));
+    }
+    if (request->hasParam("bluetooth_icon_menu", true)) {
+        settings.has_bluetooth_icon_menu = true;
+        settings.bluetooth_icon_menu = form_bool(value("bluetooth_icon_menu"));
+    }
 
     bool valid = settings.current_profile >= 0 && settings.current_profile < USER_PROFILE_COUNT &&
                  settings.grind_mode >= 0 && settings.grind_mode <= 1 &&
@@ -712,6 +728,19 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     saved = put_bool("screensaver", "startup", settings.screensaver_startup) && saved;
     saved = put_bool("screensaver", "sleep", settings.screensaver_sleep) && saved;
     saved = put_bool("bluetooth", "startup", settings.bluetooth_startup) && saved;
+    if (settings.has_wifi_tab) {
+        saved = network_manager.set_tab_enabled(settings.wifi_tab) && saved;
+    }
+    if (settings.has_wifi_icon_menu) {
+        saved = network_manager.set_icon_menu_only(settings.wifi_icon_menu) && saved;
+    }
+    if (settings.has_bluetooth_icon_menu) {
+        if (bluetooth_manager_) {
+            bluetooth_manager_->set_icon_menu_only(settings.bluetooth_icon_menu);
+        } else {
+            saved = put_bool("bluetooth", "icon_menu", settings.bluetooth_icon_menu) && saved;
+        }
+    }
 
     Preferences brightness;
     if (brightness.begin("brightness", false)) {
@@ -817,7 +846,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,"
              "\"screensaver_style\":\"%s\",\"has_custom_screensaver\":%s,"
              "\"gaggimate_host\":\"%s\"},"
-             "\"bluetooth_startup\":%s}",
+             "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s}",
              profile.current_profile,
              profile.mode == GrindMode::TIME ? "time" : "weight",
              profile.profiles[0].name, profile.profiles[0].weight, profile.profiles[0].time_seconds,
@@ -841,7 +870,10 @@ void DeviceApi::refresh_settings_cache() {
              screensaver_timing.display_off_delay_s,
              screensaver_style.c_str(), LittleFS.exists(BLE_IMAGE_FILENAME) ? "true" : "false",
              gaggimate_host.c_str(),
-             read_bool("bluetooth", "startup", true) ? "true" : "false");
+             network_manager.is_tab_enabled() ? "true" : "false",
+             network_manager.is_icon_menu_only() ? "true" : "false",
+             read_bool("bluetooth", "startup", true) ? "true" : "false",
+             (bluetooth_manager_ ? bluetooth_manager_->is_icon_menu_only() : read_bool("bluetooth", "icon_menu", false)) ? "true" : "false");
     xSemaphoreTake(settings_mutex_, portMAX_DELAY);
     settings_json_cache_ = json;
     xSemaphoreGive(settings_mutex_);

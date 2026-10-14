@@ -183,7 +183,7 @@ void DeviceWebServer::init(HardwareManager* hardware_manager, GrindController* g
     hardware_manager_ = hardware_manager;
     grind_controller_ = grind_controller;
     bluetooth_manager_ = bluetooth_manager;
-    device_api.init(&server_, hardware_manager_, grind_controller_, profile_controller);
+    device_api.init(&server_, hardware_manager_, grind_controller_, profile_controller, bluetooth_manager_);
     configure_routes();
     initialized_ = true;
 }

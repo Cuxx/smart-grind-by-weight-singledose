@@ -11,6 +11,7 @@
 class GrindController;
 class HardwareManager;
 class ProfileController;
+class BluetoothManager;
 
 struct DeviceSettingsUpdate {
     int current_profile = 1;
@@ -41,12 +42,19 @@ struct DeviceSettingsUpdate {
     char screensaver_style[12] = "minimal";
     char gaggimate_host[64] = "gaggimate.local";
     bool bluetooth_startup = true;
+    bool has_wifi_tab = false;
+    bool wifi_tab = true;
+    bool has_wifi_icon_menu = false;
+    bool wifi_icon_menu = false;
+    bool has_bluetooth_icon_menu = false;
+    bool bluetooth_icon_menu = false;
 };
 
 class DeviceApi {
 public:
     void init(AsyncWebServer* server, HardwareManager* hardware,
-              GrindController* grind_controller, ProfileController* profile_controller);
+              GrindController* grind_controller, ProfileController* profile_controller,
+              BluetoothManager* bluetooth_manager = nullptr);
     void update();
     bool process_commands();
     // UI task calls this only after reloading runtime settings.
@@ -83,6 +91,7 @@ private:
     HardwareManager* hardware_ = nullptr;
     GrindController* grind_controller_ = nullptr;
     ProfileController* profile_controller_ = nullptr;
+    BluetoothManager* bluetooth_manager_ = nullptr;
     QueueHandle_t command_queue_ = nullptr;
     SemaphoreHandle_t settings_mutex_ = nullptr;
     String settings_json_cache_;
