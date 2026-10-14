@@ -4,6 +4,15 @@ This file records the user-visible changes in the community-maintained release
 line. Earlier release history remains available in the original project's
 [GitHub releases](https://github.com/jaapp/smart-grind-by-weight/releases).
 
+## [1.6.1] - 2026-10-14
+
+### Web Interface & Connectivity
+
+- Subdivided the Connectivity settings page into dedicated Wi-Fi and Bluetooth sections.
+- Added Web UI toggle to show or hide the Wi-Fi carousel tab on the grinder screen.
+- Added Web UI toggles to hide Wi-Fi and Bluetooth status icons during grind modes.
+- Instant display synchronization when connectivity settings are saved from the browser.
+
 ## [1.6.0] - 2026-10-14
 
 ### Single Dose grinding mode
@@ -405,3 +414,4 @@ fixes described above.
 [1.5.8]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.8
 [1.5.9]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.9
 [1.6.0]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.0
+[1.6.1]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.1
