@@ -637,6 +637,31 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
     // Swipe toggle using existing pattern
     create_toggle_row(parent, "Swipe", &grind_mode_swipe_toggle);
 
+    // Grind Screens section
+    create_separator(parent, "Grind Screens");
+    create_description_label(parent, "Choose which screens appear in the main view. At least one must be enabled.");
+    create_toggle_row(parent, "Manual", &grind_tab_manual_toggle);
+    create_toggle_row(parent, "Single", &grind_tab_single_toggle);
+    create_toggle_row(parent, "Double", &grind_tab_double_toggle);
+    create_toggle_row(parent, "Custom", &grind_tab_custom_toggle);
+
+    if (grind_tab_manual_toggle) {
+        lv_obj_add_event_cb(grind_tab_manual_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(EventBridgeLVGL::EventType::GRIND_TAB_MANUAL_TOGGLE)));
+    }
+    if (grind_tab_single_toggle) {
+        lv_obj_add_event_cb(grind_tab_single_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(EventBridgeLVGL::EventType::GRIND_TAB_SINGLE_TOGGLE)));
+    }
+    if (grind_tab_double_toggle) {
+        lv_obj_add_event_cb(grind_tab_double_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(EventBridgeLVGL::EventType::GRIND_TAB_DOUBLE_TOGGLE)));
+    }
+    if (grind_tab_custom_toggle) {
+        lv_obj_add_event_cb(grind_tab_custom_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(EventBridgeLVGL::EventType::GRIND_TAB_CUSTOM_TOGGLE)));
+    }
+
     // Automatic actions section
     create_separator(parent, "Automation");
     create_description_label(parent, "Start the selected profile as soon as the cup lands on the scale.");
@@ -1672,4 +1697,28 @@ void MenuScreen::update_grind_mode_toggles() {
         lv_slider_set_value(single_dose_timeout_slider, clamped_sd, LV_ANIM_OFF);
     }
     update_single_dose_timeout_display(single_dose_timeout_s);
+    update_grind_tab_toggles();
+}
+
+void MenuScreen::update_grind_tab_toggles() {
+    if (!hardware_manager) return;
+    Preferences* prefs = hardware_manager->get_preferences();
+    bool manual = prefs ? prefs->getBool("tab_manual", true) : true;
+    bool single = prefs ? prefs->getBool("tab_single", true) : true;
+    bool double_dose = prefs ? prefs->getBool("tab_double", true) : true;
+    bool custom = prefs ? prefs->getBool("tab_custom", true) : true;
+
+    auto set_toggle = [](lv_obj_t* toggle, bool val) {
+        if (!toggle) return;
+        if (val) {
+            lv_obj_add_state(toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(toggle, LV_STATE_CHECKED);
+        }
+    };
+
+    set_toggle(grind_tab_manual_toggle, manual);
+    set_toggle(grind_tab_single_toggle, single);
+    set_toggle(grind_tab_double_toggle, double_dose);
+    set_toggle(grind_tab_custom_toggle, custom);
 }

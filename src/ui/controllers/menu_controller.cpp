@@ -53,6 +53,11 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::WIFI_ICON_TOGGLE, [this](lv_event_t*) { handle_wifi_icon_toggle(); });
     EventBridgeLVGL::register_handler(ET::LOGGING_TOGGLE, [this](lv_event_t*) { handle_logging_toggle(); });
 
+    EventBridgeLVGL::register_handler(ET::GRIND_TAB_MANUAL_TOGGLE, [this](lv_event_t*) { handle_grind_tab_manual_toggle(); });
+    EventBridgeLVGL::register_handler(ET::GRIND_TAB_SINGLE_TOGGLE, [this](lv_event_t*) { handle_grind_tab_single_toggle(); });
+    EventBridgeLVGL::register_handler(ET::GRIND_TAB_DOUBLE_TOGGLE, [this](lv_event_t*) { handle_grind_tab_double_toggle(); });
+    EventBridgeLVGL::register_handler(ET::GRIND_TAB_CUSTOM_TOGGLE, [this](lv_event_t*) { handle_grind_tab_custom_toggle(); });
+
     EventBridgeLVGL::register_handler(ET::GRIND_MODE_SWIPE_TOGGLE, [this](lv_event_t*) { handle_grind_mode_swipe_toggle(); });
     EventBridgeLVGL::register_handler(ET::GRIND_MODE_RADIO_BUTTON, [this](lv_event_t*) { handle_grind_mode_radio_button(); });
     EventBridgeLVGL::register_handler(ET::AUTO_START_TOGGLE, [this](lv_event_t*) { handle_auto_start_toggle(); });
@@ -389,6 +394,56 @@ void MenuUIController::handle_logging_toggle() {
     prefs.end();
 
     LOG_DEBUG_PRINTLN(logging_enabled ? "Logging enabled" : "Logging disabled");
+}
+
+void MenuUIController::handle_grind_tab_toggle(int which) {
+    (void)which;
+    if (!ui_manager_) return;
+
+    auto* m_toggle = ui_manager_->menu_screen.get_grind_tab_manual_toggle();
+    auto* s_toggle = ui_manager_->menu_screen.get_grind_tab_single_toggle();
+    auto* d_toggle = ui_manager_->menu_screen.get_grind_tab_double_toggle();
+    auto* c_toggle = ui_manager_->menu_screen.get_grind_tab_custom_toggle();
+
+    bool m = m_toggle ? lv_obj_has_state(m_toggle, LV_STATE_CHECKED) : true;
+    bool s = s_toggle ? lv_obj_has_state(s_toggle, LV_STATE_CHECKED) : true;
+    bool d = d_toggle ? lv_obj_has_state(d_toggle, LV_STATE_CHECKED) : true;
+    bool c = c_toggle ? lv_obj_has_state(c_toggle, LV_STATE_CHECKED) : true;
+
+    // Critical constraint: At least one grind mode MUST remain active
+    if (!m && !s && !d && !c) {
+        LOG_DEBUG_PRINTLN("Cannot disable all grind screens: at least one must remain active");
+        ui_manager_->menu_screen.update_grind_tab_toggles();
+        return;
+    }
+
+    auto* hardware = ui_manager_->get_hardware_manager();
+    Preferences* prefs = hardware ? hardware->get_preferences() : nullptr;
+    if (prefs) {
+        prefs->putBool("tab_manual", m);
+        prefs->putBool("tab_single", s);
+        prefs->putBool("tab_double", d);
+        prefs->putBool("tab_custom", c);
+    }
+
+    LOG_DEBUG_PRINTF("Grind screens updated: manual=%d, single=%d, double=%d, custom=%d\n", m, s, d, c);
+    ui_manager_->rebuild_ready_tabs();
+}
+
+void MenuUIController::handle_grind_tab_manual_toggle() {
+    handle_grind_tab_toggle(0);
+}
+
+void MenuUIController::handle_grind_tab_single_toggle() {
+    handle_grind_tab_toggle(1);
+}
+
+void MenuUIController::handle_grind_tab_double_toggle() {
+    handle_grind_tab_toggle(2);
+}
+
+void MenuUIController::handle_grind_tab_custom_toggle() {
+    handle_grind_tab_toggle(3);
 }
 
 void MenuUIController::handle_grind_mode_swipe_toggle() {

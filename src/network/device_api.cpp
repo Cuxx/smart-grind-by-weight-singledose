@@ -616,6 +616,34 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
         settings.has_bluetooth_icon_menu = true;
         settings.bluetooth_icon_menu = form_bool(value("bluetooth_icon_menu"));
     }
+    if (request->hasParam("tab_manual", true)) {
+        settings.has_tab_manual = true;
+        settings.tab_manual = form_bool(value("tab_manual"));
+    }
+    if (request->hasParam("tab_single", true)) {
+        settings.has_tab_single = true;
+        settings.tab_single = form_bool(value("tab_single"));
+    }
+    if (request->hasParam("tab_double", true)) {
+        settings.has_tab_double = true;
+        settings.tab_double = form_bool(value("tab_double"));
+    }
+    if (request->hasParam("tab_custom", true)) {
+        settings.has_tab_custom = true;
+        settings.tab_custom = form_bool(value("tab_custom"));
+    }
+
+    if (settings.has_tab_manual || settings.has_tab_single || settings.has_tab_double || settings.has_tab_custom) {
+        Preferences* grinder_prefs = hardware_ ? hardware_->get_preferences() : nullptr;
+        bool m_active = settings.has_tab_manual ? settings.tab_manual : (grinder_prefs ? grinder_prefs->getBool("tab_manual", true) : true);
+        bool s_active = settings.has_tab_single ? settings.tab_single : (grinder_prefs ? grinder_prefs->getBool("tab_single", true) : true);
+        bool d_active = settings.has_tab_double ? settings.tab_double : (grinder_prefs ? grinder_prefs->getBool("tab_double", true) : true);
+        bool c_active = settings.has_tab_custom ? settings.tab_custom : (grinder_prefs ? grinder_prefs->getBool("tab_custom", true) : true);
+        if (!m_active && !s_active && !d_active && !c_active) {
+            request->send(400, "application/json", "{\"error\":\"At least one grind mode must remain enabled\"}");
+            return false;
+        }
+    }
 
     bool valid = settings.current_profile >= 0 && settings.current_profile < USER_PROFILE_COUNT &&
                  settings.grind_mode >= 0 && settings.grind_mode <= 1 &&
@@ -706,6 +734,18 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     saved = grind_controller_->save_coast_ratio(settings.coast_ratio) && saved;
     saved = grind_controller_->save_motor_latency(settings.motor_latency_ms) && saved;
     saved = grind_controller_->save_single_dose_timeout(settings.single_dose_timeout_s) && saved;
+    if (settings.has_tab_manual) {
+        saved = (grinder->putBool("tab_manual", settings.tab_manual) == sizeof(bool)) && saved;
+    }
+    if (settings.has_tab_single) {
+        saved = (grinder->putBool("tab_single", settings.tab_single) == sizeof(bool)) && saved;
+    }
+    if (settings.has_tab_double) {
+        saved = (grinder->putBool("tab_double", settings.tab_double) == sizeof(bool)) && saved;
+    }
+    if (settings.has_tab_custom) {
+        saved = (grinder->putBool("tab_custom", settings.tab_custom) == sizeof(bool)) && saved;
+    }
 
     auto put_bool = [](const char* name_space, const char* key, bool value) {
         Preferences preferences;
@@ -828,6 +868,11 @@ void DeviceApi::refresh_settings_cache() {
     }
     const String gaggimate_host = gaggimate_status_client.configured_host();
 
+    const bool tab_manual = grinder ? grinder->getBool("tab_manual", true) : true;
+    const bool tab_single = grinder ? grinder->getBool("tab_single", true) : true;
+    const bool tab_double = grinder ? grinder->getBool("tab_double", true) : true;
+    const bool tab_custom = grinder ? grinder->getBool("tab_custom", true) : true;
+
     char json[2048];
     snprintf(json, sizeof(json),
              "{\"api\":\"v1\",\"current_profile\":%d,\"grind_mode\":\"%s\","
@@ -846,7 +891,8 @@ void DeviceApi::refresh_settings_cache() {
              "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,"
              "\"screensaver_style\":\"%s\",\"has_custom_screensaver\":%s,"
              "\"gaggimate_host\":\"%s\"},"
-             "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s}",
+             "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,"
+             "\"tabs\":{\"manual\":%s,\"single\":%s,\"double\":%s,\"custom\":%s}}",
              profile.current_profile,
              profile.mode == GrindMode::TIME ? "time" : "weight",
              profile.profiles[0].name, profile.profiles[0].weight, profile.profiles[0].time_seconds,
@@ -873,7 +919,11 @@ void DeviceApi::refresh_settings_cache() {
              network_manager.is_tab_enabled() ? "true" : "false",
              network_manager.is_icon_menu_only() ? "true" : "false",
              read_bool("bluetooth", "startup", true) ? "true" : "false",
-             (bluetooth_manager_ ? bluetooth_manager_->is_icon_menu_only() : read_bool("bluetooth", "icon_menu", false)) ? "true" : "false");
+             (bluetooth_manager_ ? bluetooth_manager_->is_icon_menu_only() : read_bool("bluetooth", "icon_menu", false)) ? "true" : "false",
+             tab_manual ? "true" : "false",
+             tab_single ? "true" : "false",
+             tab_double ? "true" : "false",
+             tab_custom ? "true" : "false");
     xSemaphoreTake(settings_mutex_, portMAX_DELAY);
     settings_json_cache_ = json;
     xSemaphoreGive(settings_mutex_);

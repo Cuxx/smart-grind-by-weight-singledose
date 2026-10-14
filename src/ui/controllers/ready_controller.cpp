@@ -28,7 +28,7 @@ void ReadyUIController::update() {
 
     if (ui_manager_->state_machine &&
         ui_manager_->state_machine->is_state(UIState::READY) &&
-        ui_manager_->current_tab == ReadyScreen::MANUAL_TAB_INDEX &&
+        ui_manager_->ready_screen.is_manual_tab(ui_manager_->current_tab) &&
         now - last_manual_scale_update_ms_ >= 100) {
         last_manual_scale_update_ms_ = now;
         auto* hardware = ui_manager_->get_hardware_manager();
@@ -45,7 +45,7 @@ void ReadyUIController::update() {
 void ReadyUIController::handle_manual_tare() {
     if (!ui_manager_ || !ui_manager_->state_machine ||
         !ui_manager_->state_machine->is_state(UIState::READY) ||
-        ui_manager_->current_tab != ReadyScreen::MANUAL_TAB_INDEX) {
+        !ui_manager_->ready_screen.is_manual_tab(ui_manager_->current_tab)) {
         return;
     }
 
@@ -79,11 +79,11 @@ void ReadyUIController::handle_tab_change(int tab) {
     }
 
     ui_manager_->current_tab = tab;
-    if (tab == ReadyScreen::MANUAL_TAB_INDEX) {
+    if (ui_manager_->ready_screen.is_manual_tab(tab)) {
         ui_manager_->current_mode = GrindMode::MANUAL;
         ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
-    } else if (ui_manager_->profile_controller && ReadyScreen::is_profile_tab(tab)) {
-        ui_manager_->profile_controller->set_current_profile(ReadyScreen::profile_index_for_tab(tab));
+    } else if (ui_manager_->profile_controller && ui_manager_->ready_screen.is_profile_tab(tab)) {
+        ui_manager_->profile_controller->set_current_profile(ui_manager_->ready_screen.profile_index_for_tab(tab));
         ui_manager_->current_mode = ui_manager_->profile_controller->get_grind_mode();
         ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
         refresh_profiles();
@@ -104,7 +104,7 @@ void ReadyUIController::handle_profile_long_press() {
     }
 
     if (!ui_manager_->state_machine->is_state(UIState::READY) ||
-        !ReadyScreen::is_profile_tab(ui_manager_->current_tab)) {
+        !ui_manager_->ready_screen.is_profile_tab(ui_manager_->current_tab)) {
         return;
     }
 
@@ -118,7 +118,7 @@ void ReadyUIController::handle_profile_long_press() {
 }
 
 void ReadyUIController::toggle_mode() {
-    if (!ui_manager_ || !ReadyScreen::is_profile_tab(ui_manager_->current_tab)) {
+    if (!ui_manager_ || !ui_manager_->ready_screen.is_profile_tab(ui_manager_->current_tab)) {
         return;
     }
 

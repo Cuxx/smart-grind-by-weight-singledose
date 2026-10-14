@@ -23,6 +23,7 @@ enum class GrindMode { WEIGHT, TIME, MANUAL };
 enum class UIState { READY, MENU, GRINDING, GRIND_COMPLETE, GRIND_TIMEOUT, PURGE_CONFIRM };
 struct ReadyScreen {
     enum { MANUAL_TAB_INDEX=0 };
+    bool is_manual_tab(int tab) const { return tab == MANUAL_TAB_INDEX; }
     bool is_menu_tab(int tab) const { return tab == 4; }
     bool is_wifi_tab(int tab) const { return false; }
 };

@@ -205,7 +205,7 @@ void GrindingUIController::handle_grind_button() {
         }
         if (ui_manager_->ready_screen.is_wifi_tab(ui_manager_->current_tab)) return;
 
-        const bool is_single_dose = (ui_manager_->current_tab == ReadyScreen::MANUAL_TAB_INDEX ||
+        const bool is_single_dose = (ui_manager_->ready_screen.is_manual_tab(ui_manager_->current_tab) ||
                                      ui_manager_->current_mode == GrindMode::MANUAL);
         if (!is_single_dose && ui_manager_->grind_controller && ui_manager_->profile_controller) {
             ui_manager_->grind_controller->set_grind_profile_id(ui_manager_->profile_controller->get_current_profile());

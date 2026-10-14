@@ -4,6 +4,7 @@
 #include "../../controllers/grind_mode_traits.h"
 #include "../event_bridge_lvgl.h"
 #ifndef SMART_GRIND_SIM
+#include <Preferences.h>
 #include "../../network/network_manager.h"
 #include "../../network/provisioning_service.h"
 #endif
@@ -58,6 +59,30 @@ void ReadyScreen::create() {
     visible = false;
 }
 
+void ReadyScreen::set_tab_config(bool manual, bool single, bool double_dose, bool custom) {
+    if (!manual && !single && !double_dose && !custom) {
+        manual = true;
+        single = true;
+        double_dose = true;
+        custom = true;
+    }
+    tab_manual_enabled_ = manual;
+    profile_tab_enabled_[0] = single;
+    profile_tab_enabled_[1] = double_dose;
+    profile_tab_enabled_[2] = custom;
+}
+
+#ifndef SMART_GRIND_SIM
+void ReadyScreen::load_tab_config(Preferences* prefs) {
+    if (!prefs) return;
+    const bool manual = prefs->getBool("tab_manual", true);
+    const bool single = prefs->getBool("tab_single", true);
+    const bool double_dose = prefs->getBool("tab_double", true);
+    const bool custom = prefs->getBool("tab_custom", true);
+    set_tab_config(manual, single, double_dose, custom);
+}
+#endif
+
 void ReadyScreen::build_tabs() {
     if (tabview) {
         lv_obj_del(tabview);
@@ -95,10 +120,26 @@ void ReadyScreen::build_tabs() {
 
     lv_obj_set_style_bg_opa(tabview, LV_OPA_TRANSP, 0);
 
-    manual_tab = lv_tabview_add_tab(tabview, "Manual");
-    profile_tabs[0] = lv_tabview_add_tab(tabview, "Single");
-    profile_tabs[1] = lv_tabview_add_tab(tabview, "Double");
-    profile_tabs[2] = lv_tabview_add_tab(tabview, "Custom");
+    int next_index = 0;
+    if (tab_manual_enabled_) {
+        manual_tab_index_ = next_index++;
+        manual_tab = lv_tabview_add_tab(tabview, "Manual");
+    } else {
+        manual_tab_index_ = -1;
+        manual_tab = nullptr;
+    }
+
+    const char* tab_names[3] = {"Single", "Double", "Custom"};
+    const char* profile_names[3] = {"SINGLE", "DOUBLE", "CUSTOM"};
+    for (int i = 0; i < 3; ++i) {
+        if (profile_tab_enabled_[i]) {
+            profile_tab_indices_[i] = next_index++;
+            profile_tabs[i] = lv_tabview_add_tab(tabview, tab_names[i]);
+        } else {
+            profile_tab_indices_[i] = -1;
+            profile_tabs[i] = nullptr;
+        }
+    }
 
 #ifdef SMART_GRIND_SIM
     has_wifi_tab_ = true;
@@ -107,20 +148,28 @@ void ReadyScreen::build_tabs() {
 #endif
 
     if (has_wifi_tab_) {
+        wifi_tab_index_ = next_index++;
         wifi_tab = lv_tabview_add_tab(tabview, "WI-FI");
     } else {
+        wifi_tab_index_ = -1;
         wifi_tab = nullptr;
     }
+
+    menu_tab_index_ = next_index++;
     menu_tab = lv_tabview_add_tab(tabview, "MENU");
+    total_tab_count_ = next_index;
 
-    create_manual_page(manual_tab);
-
-    const char* names[3] = {"SINGLE", "DOUBLE", "CUSTOM"};
-    for (int i = 0; i < 3; i++) {
-        create_profile_page(profile_tabs[i], i, names[i], cached_profile_values_[i]);
+    if (manual_tab) {
+        create_manual_page(manual_tab);
     }
 
-    if (has_wifi_tab_) {
+    for (int i = 0; i < 3; i++) {
+        if (profile_tabs[i]) {
+            create_profile_page(profile_tabs[i], i, profile_names[i], cached_profile_values_[i]);
+        }
+    }
+
+    if (has_wifi_tab_ && wifi_tab) {
         create_wifi_page(wifi_tab);
     }
 
