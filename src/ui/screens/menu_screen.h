@@ -92,6 +92,10 @@ private:
     lv_obj_t* motor_latency_label;
     lv_obj_t* single_dose_timeout_slider;
     lv_obj_t* single_dose_timeout_label;
+    lv_obj_t* grind_tab_manual_toggle;
+    lv_obj_t* grind_tab_single_toggle;
+    lv_obj_t* grind_tab_double_toggle;
+    lv_obj_t* grind_tab_custom_toggle;
 
     // Tools entries / scale page elements
     lv_obj_t* scale_item;
@@ -184,6 +188,11 @@ public:
     lv_obj_t* get_single_dose_timeout_slider() const { return single_dose_timeout_slider; }
     lv_obj_t* get_single_dose_timeout_label() const { return single_dose_timeout_label; }
     void update_single_dose_timeout_display(uint32_t seconds);
+    lv_obj_t* get_grind_tab_manual_toggle() const { return grind_tab_manual_toggle; }
+    lv_obj_t* get_grind_tab_single_toggle() const { return grind_tab_single_toggle; }
+    lv_obj_t* get_grind_tab_double_toggle() const { return grind_tab_double_toggle; }
+    lv_obj_t* get_grind_tab_custom_toggle() const { return grind_tab_custom_toggle; }
+    void update_grind_tab_toggles();
     lv_obj_t* get_screensaver_startup_toggle() const { return screensaver_startup_toggle; }
     lv_obj_t* get_screensaver_sleep_toggle() const { return screensaver_sleep_toggle; }
     lv_obj_t* get_display_off_toggle() const { return display_off_toggle; }

@@ -41,25 +41,59 @@ private:
     lv_event_cb_t profile_long_press_handler_ = nullptr;
     lv_event_cb_t manual_tare_handler_ = nullptr;
 
+    bool tab_manual_enabled_ = true;
+    bool profile_tab_enabled_[3] = {true, true, true};
+    int manual_tab_index_ = 0;
+    int profile_tab_indices_[3] = {1, 2, 3};
+    int wifi_tab_index_ = -1;
+    int menu_tab_index_ = 4;
+    int total_tab_count_ = 5;
+
 public:
     static constexpr int MANUAL_TAB_INDEX = 0;
     static constexpr int PROFILE_TAB_START_INDEX = 1;
     static constexpr int PROFILE_TAB_COUNT = 3;
 
-    static bool is_profile_tab(int tab) {
-        return tab >= PROFILE_TAB_START_INDEX &&
-               tab < PROFILE_TAB_START_INDEX + PROFILE_TAB_COUNT;
+    bool is_manual_enabled() const { return tab_manual_enabled_; }
+    bool is_profile_enabled(int profile) const {
+        return profile >= 0 && profile < 3 ? profile_tab_enabled_[profile] : false;
     }
-    static int profile_index_for_tab(int tab) { return tab - PROFILE_TAB_START_INDEX; }
-    static int tab_for_profile_index(int profile) { return profile + PROFILE_TAB_START_INDEX; }
+    void set_tab_config(bool manual, bool single, bool double_dose, bool custom);
+#ifndef SMART_GRIND_SIM
+    void load_tab_config(class Preferences* prefs);
+#endif
+
+    bool is_manual_tab(int tab) const { return manual_tab_index_ >= 0 && tab == manual_tab_index_; }
+    bool is_profile_tab(int tab) const {
+        for (int i = 0; i < 3; ++i) {
+            if (profile_tab_indices_[i] >= 0 && tab == profile_tab_indices_[i]) return true;
+        }
+        return false;
+    }
+    int profile_index_for_tab(int tab) const {
+        for (int i = 0; i < 3; ++i) {
+            if (profile_tab_indices_[i] >= 0 && tab == profile_tab_indices_[i]) return i;
+        }
+        return -1;
+    }
+    int tab_for_profile_index(int profile) const {
+        if (profile >= 0 && profile < 3 && profile_tab_indices_[profile] >= 0) {
+            return profile_tab_indices_[profile];
+        }
+        for (int i = 0; i < 3; ++i) {
+            if (profile_tab_indices_[i] >= 0) return profile_tab_indices_[i];
+        }
+        return manual_tab_index_ >= 0 ? manual_tab_index_ : 0;
+    }
+
+    int manual_tab_index() const { return manual_tab_index_; }
+    int wifi_tab_index() const { return wifi_tab_index_; }
+    int menu_tab_index() const { return menu_tab_index_; }
+    int tab_count() const { return total_tab_count_; }
 
     bool has_wifi_tab() const { return has_wifi_tab_; }
-    int wifi_tab_index() const { return has_wifi_tab_ ? 4 : -1; }
-    int menu_tab_index() const { return has_wifi_tab_ ? 5 : 4; }
-    int tab_count() const { return has_wifi_tab_ ? 6 : 5; }
-
-    bool is_wifi_tab(int tab) const { return has_wifi_tab_ && tab == wifi_tab_index(); }
-    bool is_menu_tab(int tab) const { return tab == menu_tab_index(); }
+    bool is_wifi_tab(int tab) const { return has_wifi_tab_ && wifi_tab_index_ >= 0 && tab == wifi_tab_index_; }
+    bool is_menu_tab(int tab) const { return menu_tab_index_ >= 0 && tab == menu_tab_index_; }
 
     void create();
     void build_tabs();

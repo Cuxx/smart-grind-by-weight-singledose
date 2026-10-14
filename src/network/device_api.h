@@ -48,6 +48,14 @@ struct DeviceSettingsUpdate {
     bool wifi_icon_menu = false;
     bool has_bluetooth_icon_menu = false;
     bool bluetooth_icon_menu = false;
+    bool has_tab_manual = false;
+    bool tab_manual = true;
+    bool has_tab_single = false;
+    bool tab_single = true;
+    bool has_tab_double = false;
+    bool tab_double = true;
+    bool has_tab_custom = false;
+    bool tab_custom = true;
 };
 
 class DeviceApi {

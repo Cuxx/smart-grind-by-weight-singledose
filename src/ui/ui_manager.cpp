@@ -30,7 +30,8 @@ void UIManager::init(HardwareManager* hw_mgr, StateMachine* sm,
     edit_target = 0.0f;
     original_target = 0.0f;
     calibration_weight = USER_CALIBRATION_REFERENCE_WEIGHT_G;
-    current_tab = ReadyScreen::tab_for_profile_index(profile_controller->get_current_profile());
+    ready_screen.load_tab_config(hardware_manager->get_preferences());
+    current_tab = ready_screen.tab_for_profile_index(profile_controller->get_current_profile());
     current_mode = profile_controller->get_grind_mode();
     jog_timer = nullptr;
     // Initialize the unified overlay system
@@ -144,7 +145,7 @@ void UIManager::update() {
     // Execute network commands on the UI/application task, never in the
     // asynchronous TCP callback that parsed them.
     if (device_api.process_commands()) {
-        current_tab = ReadyScreen::tab_for_profile_index(profile_controller->get_current_profile());
+        current_tab = ready_screen.tab_for_profile_index(profile_controller->get_current_profile());
         current_mode = profile_controller->get_grind_mode();
         edit_target = get_current_profile_target(*profile_controller, current_mode);
         bool runtime_applied = refresh_auto_action_settings(true);
@@ -165,6 +166,7 @@ void UIManager::update() {
             menu_screen.update_bluetooth_startup_toggle();
             menu_screen.update_logging_toggle();
             menu_screen.update_grind_mode_toggles();
+            menu_screen.update_grind_tab_toggles();
             menu_screen.update_screensaver_toggles();
             menu_screen.update_network_status();
             menu_screen.update_ble_status();
@@ -461,7 +463,7 @@ void UIManager::update_auto_actions() {
     const uint32_t now = millis();
     const bool grinder_active = (grind_controller && grind_controller->is_active());
     const bool on_ready_tab = state_machine->is_state(UIState::READY) &&
-                              ReadyScreen::is_profile_tab(current_tab);
+                              ready_screen.is_profile_tab(current_tab);
 
     if (auto_actions_.auto_start_enabled && on_ready_tab && !grinder_active && grinding_controller_) {
         auto* filter = sensor->get_raw_filter();
@@ -537,6 +539,9 @@ void UIManager::update_auto_actions() {
 }
 
 void UIManager::rebuild_ready_tabs() {
+    if (hardware_manager) {
+        ready_screen.load_tab_config(hardware_manager->get_preferences());
+    }
     ready_screen.rebuild_tabs();
     if (ready_controller_) {
         ready_controller_->rebind_tabs();
@@ -549,6 +554,17 @@ void UIManager::rebuild_ready_tabs() {
     if (target_tab >= ready_screen.tab_count()) {
         target_tab = ready_screen.tab_count() - 1;
     }
+    if (!ready_screen.is_manual_tab(target_tab) && !ready_screen.is_profile_tab(target_tab) &&
+        !ready_screen.is_wifi_tab(target_tab) && !ready_screen.is_menu_tab(target_tab)) {
+        target_tab = ready_screen.tab_for_profile_index(profile_controller ? profile_controller->get_current_profile() : 0);
+    }
     set_current_tab(target_tab);
     ready_screen.set_active_tab(target_tab);
+    if (ready_screen.is_manual_tab(target_tab)) {
+        current_mode = GrindMode::MANUAL;
+    } else if (profile_controller && ready_screen.is_profile_tab(target_tab)) {
+        profile_controller->set_current_profile(ready_screen.profile_index_for_tab(target_tab));
+        current_mode = profile_controller->get_grind_mode();
+    }
+    grinding_screen.set_mode(current_mode);
 }
