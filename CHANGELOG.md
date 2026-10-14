@@ -4,6 +4,13 @@ This file records the user-visible changes in the community-maintained release
 line. Earlier release history remains available in the original project's
 [GitHub releases](https://github.com/jaapp/smart-grind-by-weight/releases).
 
+## [1.6.2] - 2026-10-14
+
+### Fixes & Improvements
+
+- Fixed grinder motor stopping when cancelling a grind session during weight or time modes.
+- Updated unit test harnesses for single dose statistics and web configuration persistence.
+
 ## [1.6.1] - 2026-10-14
 
 ### Web Interface & Connectivity
@@ -415,3 +422,4 @@ fixes described above.
 [1.5.9]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.9
 [1.6.0]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.0
 [1.6.1]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.1
+[1.6.2]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.2
