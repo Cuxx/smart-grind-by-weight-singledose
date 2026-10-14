@@ -29,7 +29,6 @@ public:
     void init(HardwareManager* hardware_manager, GrindController* grind_controller,
               BluetoothManager* bluetooth_manager, ProfileController* profile_controller);
     void begin();
-    void end();
     void update();
     bool is_ota_active() const { return ota_active_.load() || reboot_pending_.load(); }
     bool is_ota_ready() const;

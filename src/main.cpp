@@ -216,6 +216,9 @@ void loop() {
     provisioning_service.update();
     if (network_manager.is_enabled()) {
         device_web_server.begin();
+    }
+    if (network_manager.is_connected() ||
+        network_manager.state() == NetworkState::WIFI_SETUP_AP) {
         device_web_server.update();
     }
     if (last_uptime_update == 0) {
