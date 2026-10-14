@@ -169,6 +169,27 @@ String SmartGrindNetworkManager::ip_address() const {
     return is_connected() ? WiFi.localIP().toString() : String();
 }
 
+int SmartGrindNetworkManager::get_rssi() const {
+    if (!is_connected()) {
+        return 0;
+    }
+    return WiFi.RSSI();
+}
+
+int8_t SmartGrindNetworkManager::get_signal_level() const {
+    if (!is_connected()) {
+        return 0;
+    }
+    const int rssi = WiFi.RSSI();
+    if (rssi > 0 || rssi < -110) {
+        return 1;
+    }
+    if (rssi >= -60) return 4;
+    if (rssi >= -70) return 3;
+    if (rssi >= -80) return 2;
+    return 1;
+}
+
 void SmartGrindNetworkManager::load_settings() {
     enabled_.store(preferences_ && preferences_->getBool("wifi_on", true));
     tab_enabled_.store(preferences_ ? preferences_->getBool("wifi_tab", true) : true);

@@ -40,6 +40,8 @@ public:
     String device_id() const;
     String network_name() const;
     String ip_address() const;
+    int get_rssi() const;
+    int8_t get_signal_level() const;
 
 private:
     static constexpr uint32_t CONNECT_TIMEOUT_MS = 15000;
