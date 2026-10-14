@@ -4,6 +4,25 @@ This file records the user-visible changes in the community-maintained release
 line. Earlier release history remains available in the original project's
 [GitHub releases](https://github.com/jaapp/smart-grind-by-weight/releases).
 
+## [1.6.0] - 2026-10-14
+
+### Single Dose grinding mode
+
+- Unified Single Dose workflow into the `GrindMode::MANUAL` mode enum, removing separate mode ambiguities while maintaining dedicated profile parameters.
+- Added configurable Single Dose safety cutoff limit (between 60 s and 300 s) in web settings and device menu to prevent unattended motor overruns.
+- Added lifetime and session statistics tracking specifically for single dose grinds.
+
+### Wi-Fi management & stability
+
+- Added on-device Wi-Fi toggle in the settings menu, enabling complete hardware power-down of the Wi-Fi radio to reduce power consumption and eliminate RF interference.
+- Fixed Wi-Fi reconnection stability and `AsyncWebServer` lifecycle management, ensuring reliable reconnection without requiring a grinder reboot.
+- Added configurable Wi-Fi carousel tab toggle in the settings menu to show or hide the network status screen from the main carousel.
+- Added option to hide the Wi-Fi status indicator icon during grinding modes, showing it only when navigating menus.
+
+### Bluetooth icon visibility
+
+- Added option to hide the Bluetooth status indicator icon during active grinding modes, displaying it only when in the menu screen.
+
 ## [1.5.9] - 2026-09-06
 
 ### Firmware update hotfix
@@ -385,3 +404,4 @@ fixes described above.
 [1.5.7]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.7
 [1.5.8]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.8
 [1.5.9]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.9
+[1.6.0]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.0
