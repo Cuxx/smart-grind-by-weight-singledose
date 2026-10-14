@@ -42,6 +42,9 @@ private:
     lv_obj_t* primary_label_;
     lv_obj_t* secondary_label_;
     lv_obj_t* detail_label_;
+    lv_obj_t* hours_label_;
+    lv_obj_t* colon_label_;
+    lv_obj_t* minutes_label_;
     lv_timer_t* animation_timer_;
     uint8_t* image_buffer_;
     lv_image_dsc_t image_dsc_;
@@ -50,9 +53,12 @@ private:
     bool visible_;
 
     String selected_style() const;
+    String selected_clock_position() const;
     bool has_custom_image() const;
     bool create_builtin(const String& style);
+    bool create_clock();
     void update_builtin();
+    void update_clock();
     static void animation_timer_callback(lv_timer_t* timer);
     bool load_image();
     void free_image();

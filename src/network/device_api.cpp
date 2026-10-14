@@ -599,6 +599,14 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
     settings.display_off_delay_s = static_cast<uint16_t>(display_off_delay_s);
     const String screensaver_style = value("screensaver_style");
     strncpy(settings.screensaver_style, screensaver_style.c_str(), sizeof(settings.screensaver_style) - 1);
+    if (request->hasParam("clock_position", true)) {
+        const String clock_pos = value("clock_position");
+        strncpy(settings.clock_position, clock_pos.c_str(), sizeof(settings.clock_position) - 1);
+    }
+    if (request->hasParam("timezone", true)) {
+        const String tz = value("timezone");
+        strncpy(settings.timezone, tz.c_str(), sizeof(settings.timezone) - 1);
+    }
     const String gaggimate_host = request->hasParam("gaggimate_host", true)
                                       ? value("gaggimate_host")
                                       : gaggimate_status_client.configured_host();
@@ -677,9 +685,12 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                  ScreensaverSettings::is_valid_startup_timeout(settings.screensaver_startup_timeout_s) &&
                  ScreensaverSettings::is_valid_display_off_delay(settings.display_off_delay_s) &&
                  (screensaver_style == "orbit" || screensaver_style == "minimal" ||
-                  screensaver_style == "blank" ||
+                  screensaver_style == "blank" || screensaver_style == "clock" ||
                   (screensaver_style == "custom" && LittleFS.exists(BLE_IMAGE_FILENAME)) ||
-                  (screensaver_style == "gaggimate" && valid_local_host(gaggimate_host)));
+                  (screensaver_style == "clock_custom" && LittleFS.exists(BLE_IMAGE_FILENAME)) ||
+                  (screensaver_style == "gaggimate" && valid_local_host(gaggimate_host))) &&
+                 (String(settings.clock_position) == "center" || String(settings.clock_position) == "top" || String(settings.clock_position) == "bottom") &&
+                 (strlen(settings.timezone) > 0 && strlen(settings.timezone) < sizeof(settings.timezone));
     for (int i = 0; i < 3 && valid; ++i) {
         valid = std::isfinite(settings.profile_weights[i]) &&
                 profile_controller_->is_weight_valid(settings.profile_weights[i]) &&
@@ -803,12 +814,14 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     Preferences screensaver;
     if (screensaver.begin("screensaver", false)) {
         const bool style_saved = screensaver.putString("style", settings.screensaver_style) == strlen(settings.screensaver_style);
-        saved = style_saved && saved;
+        const bool pos_saved = screensaver.putString("clock_pos", settings.clock_position) == strlen(settings.clock_position);
+        saved = style_saved && pos_saved && saved;
         const String stored_style = screensaver.getString("style", "");
         screensaver.end();
         const bool style_read = stored_style == "minimal" || stored_style == "orbit" ||
                                 stored_style == "blank" || stored_style == "custom" ||
-                                stored_style == "gaggimate";
+                                stored_style == "gaggimate" || stored_style == "clock" ||
+                                stored_style == "clock_custom";
         if (style_read) {
             saved = gaggimate_status_client.configure(stored_style == "gaggimate",
                                                       settings.gaggimate_host) && saved;
@@ -819,6 +832,7 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     } else {
         saved = false;
     }
+    network_manager.configure_timezone(settings.timezone);
     LOG_BLE("[WEB] Grinder settings %s\n", saved ? "updated" : "partly saved; storage or runtime setup failed");
     return saved;
 }
@@ -862,10 +876,13 @@ void DeviceApi::refresh_settings_cache() {
     const ScreensaverTimingSettings screensaver_timing = ScreensaverSettings::load_timing();
     Preferences screensaver_preferences;
     String screensaver_style = LittleFS.exists(BLE_IMAGE_FILENAME) ? "custom" : "minimal";
+    String clock_position = "center";
     if (screensaver_preferences.begin("screensaver", true)) {
         screensaver_style = screensaver_preferences.getString("style", screensaver_style);
+        clock_position = screensaver_preferences.getString("clock_pos", "center");
         screensaver_preferences.end();
     }
+    const String timezone = network_manager.timezone();
     const String gaggimate_host = gaggimate_status_client.configured_host();
 
     const bool tab_manual = grinder ? grinder->getBool("tab_manual", true) : true;
@@ -889,7 +906,8 @@ void DeviceApi::refresh_settings_cache() {
              "\"screensaver_startup\":%s,\"screensaver_sleep\":%s,"
              "\"screensaver_idle_timeout_s\":%u,\"screensaver_startup_timeout_s\":%u,"
              "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,"
-             "\"screensaver_style\":\"%s\",\"has_custom_screensaver\":%s,"
+             "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"timezone\":\"%s\","
+             "\"has_custom_screensaver\":%s,"
              "\"gaggimate_host\":\"%s\"},"
              "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,"
              "\"tabs\":{\"manual\":%s,\"single\":%s,\"double\":%s,\"custom\":%s}}",
@@ -914,7 +932,8 @@ void DeviceApi::refresh_settings_cache() {
              screensaver_timing.idle_timeout_s, screensaver_timing.startup_timeout_s,
              screensaver_timing.display_off_enabled ? "true" : "false",
              screensaver_timing.display_off_delay_s,
-             screensaver_style.c_str(), LittleFS.exists(BLE_IMAGE_FILENAME) ? "true" : "false",
+             screensaver_style.c_str(), clock_position.c_str(), timezone.c_str(),
+             LittleFS.exists(BLE_IMAGE_FILENAME) ? "true" : "false",
              gaggimate_host.c_str(),
              network_manager.is_tab_enabled() ? "true" : "false",
              network_manager.is_icon_menu_only() ? "true" : "false",

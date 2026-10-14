@@ -111,6 +111,7 @@ struct StatusClient {
 struct NetworkManager {
     bool set_tab_enabled(bool) { return true; }
     bool set_icon_menu_only(bool) { return true; }
+    void configure_timezone(const String&) {}
 } network_manager;
 struct BluetoothManager {
     void set_icon_menu_only(bool) {}
@@ -135,7 +136,7 @@ int main() {
     strcpy(update.screensaver_style, "gaggimate");
     assert(api.apply_settings(update));
     const int total_writes = Preferences::writes, total_opens = Preferences::opens;
-    assert(total_writes == 16 && total_opens == 10);
+    assert(total_writes == 17 && total_opens == 10);
     assert(control.motor_response_latency_ms == 100 && control.coast_ratio_ == 2);
     // Applying a legacy form preserves the current panel-off values while
     // still using the checked persistence path.

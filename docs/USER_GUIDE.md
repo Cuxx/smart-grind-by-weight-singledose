@@ -212,6 +212,12 @@ grinder.
 
 - **Custom image**: Upload a normal photo from the web interface; conversion
   happens in the browser before it is sent to the grinder.
+- **Clock screensavers**:
+  - **Clock (Black)**: Large time display on an AMOLED solid black background. When Wi-Fi is unavailable or NTP time has not synchronized, the screen stays cleanly black.
+  - **Clock (Custom)**: Overlays the large clock on your uploaded custom image. When unsynchronized, it displays the image cleanly without the time.
+  - **Clock Position**: Choose between `Center`, `Top`, or `Bottom`. The colon (`:`) stays fixed at horizontal center without drifting when digit widths vary.
+  - **Timezone**: Set your local POSIX TZ string (default `CET-1CEST,M3.5.0,M10.5.0/3`) or tap `Auto` to detect it from your browser.
+  - **Burn-in protection**: Periodically applies subtle 1–2 px subpixel shifting every minute to protect the AMOLED screen.
 - **GaggiMate status**: Enter the machine hostname (normally
   `gaggimate.local`) or its IP address. While both devices are on the same
   Wi-Fi network, the screensaver shows temperature and readiness, then live

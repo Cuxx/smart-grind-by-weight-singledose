@@ -39,7 +39,9 @@ struct DeviceSettingsUpdate {
     uint16_t display_off_delay_s = 3600;
     bool has_display_off_enabled = true;
     bool has_display_off_delay_s = true;
-    char screensaver_style[12] = "minimal";
+    char screensaver_style[16] = "minimal";
+    char clock_position[8] = "center";
+    char timezone[36] = "CET-1CEST,M3.5.0,M10.5.0/3";
     char gaggimate_host[64] = "gaggimate.local";
     bool bluetooth_startup = true;
     bool has_wifi_tab = false;
