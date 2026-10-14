@@ -47,7 +47,10 @@ void MenuUIController::register_events() {
 
     EventBridgeLVGL::register_handler(ET::BLE_TOGGLE, [this](lv_event_t*) { handle_ble_toggle(); });
     EventBridgeLVGL::register_handler(ET::BLE_STARTUP_TOGGLE, [this](lv_event_t*) { handle_ble_startup_toggle(); });
+    EventBridgeLVGL::register_handler(ET::BLE_ICON_TOGGLE, [this](lv_event_t*) { handle_ble_icon_toggle(); });
     EventBridgeLVGL::register_handler(ET::WIFI_TOGGLE, [this](lv_event_t*) { handle_wifi_toggle(); });
+    EventBridgeLVGL::register_handler(ET::WIFI_TAB_TOGGLE, [this](lv_event_t*) { handle_wifi_tab_toggle(); });
+    EventBridgeLVGL::register_handler(ET::WIFI_ICON_TOGGLE, [this](lv_event_t*) { handle_wifi_icon_toggle(); });
     EventBridgeLVGL::register_handler(ET::LOGGING_TOGGLE, [this](lv_event_t*) { handle_logging_toggle(); });
 
     EventBridgeLVGL::register_handler(ET::GRIND_MODE_SWIPE_TOGGLE, [this](lv_event_t*) { handle_grind_mode_swipe_toggle(); });
@@ -231,7 +234,7 @@ void MenuUIController::handle_autotune() {
 
 void MenuUIController::handle_back() {
     if (!ui_manager_) return;
-    ui_manager_->set_current_tab(ReadyScreen::MENU_TAB_INDEX);
+    ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::READY);
 }
 
@@ -316,6 +319,21 @@ void MenuUIController::handle_ble_startup_toggle() {
     LOG_DEBUG_PRINTLN(startup_enabled ? "Bluetooth startup enabled" : "Bluetooth startup disabled");
 }
 
+void MenuUIController::handle_ble_icon_toggle() {
+    if (!ui_manager_ || !ui_manager_->bluetooth_manager) return;
+
+    auto* toggle = ui_manager_->menu_screen.get_ble_icon_toggle();
+    if (!toggle) return;
+
+    bool icon_menu_only = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    ui_manager_->bluetooth_manager->set_icon_menu_only(icon_menu_only);
+    LOG_DEBUG_PRINTLN(icon_menu_only ? "Bluetooth icon menu-only enabled" : "Bluetooth icon menu-only disabled");
+    ui_manager_->menu_screen.update_ble_status();
+    if (ui_manager_->status_indicator_controller_) {
+        ui_manager_->status_indicator_controller_->update_ble_status_icon();
+    }
+}
+
 void MenuUIController::handle_wifi_toggle() {
     if (!ui_manager_) return;
 
@@ -326,6 +344,35 @@ void MenuUIController::handle_wifi_toggle() {
     network_manager.set_enabled(wifi_enabled);
     LOG_DEBUG_PRINTLN(wifi_enabled ? "Wi-Fi enabled by user" : "Wi-Fi disabled by user");
     ui_manager_->menu_screen.update_network_status();
+    ui_manager_->rebuild_ready_tabs();
+}
+
+void MenuUIController::handle_wifi_tab_toggle() {
+    if (!ui_manager_) return;
+
+    auto* toggle = ui_manager_->menu_screen.get_wifi_tab_toggle();
+    if (!toggle) return;
+
+    bool tab_enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    network_manager.set_tab_enabled(tab_enabled);
+    LOG_DEBUG_PRINTLN(tab_enabled ? "Wi-Fi carousel tab enabled" : "Wi-Fi carousel tab disabled");
+    ui_manager_->menu_screen.update_network_status();
+    ui_manager_->rebuild_ready_tabs();
+}
+
+void MenuUIController::handle_wifi_icon_toggle() {
+    if (!ui_manager_) return;
+
+    auto* toggle = ui_manager_->menu_screen.get_wifi_icon_toggle();
+    if (!toggle) return;
+
+    bool icon_menu_only = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    network_manager.set_icon_menu_only(icon_menu_only);
+    LOG_DEBUG_PRINTLN(icon_menu_only ? "Wi-Fi icon menu-only enabled" : "Wi-Fi icon menu-only disabled");
+    ui_manager_->menu_screen.update_network_status();
+    if (ui_manager_->status_indicator_controller_) {
+        ui_manager_->status_indicator_controller_->update_wifi_status_icon();
+    }
 }
 
 void MenuUIController::handle_logging_toggle() {
@@ -871,7 +918,7 @@ void MenuUIController::run_motor_test() {
 
 void MenuUIController::return_to_menu() {
     if (!ui_manager_) return;
-    ui_manager_->set_current_tab(ReadyScreen::MENU_TAB_INDEX);
+    ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::MENU);
 }
 

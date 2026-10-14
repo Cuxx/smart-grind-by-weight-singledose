@@ -54,51 +54,97 @@ void ReadyScreen::create() {
     lv_obj_set_style_pad_all(screen, 0, 0);
     lv_obj_add_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
-    // Create tabview
+    build_tabs();
+    visible = false;
+}
+
+void ReadyScreen::build_tabs() {
+    if (tabview) {
+        lv_obj_del(tabview);
+        tabview = nullptr;
+        wifi_tab = nullptr;
+        wifi_status_label = nullptr;
+        wifi_detail_label = nullptr;
+        wifi_qr = nullptr;
+        manual_tab = nullptr;
+        manual_weight_label = nullptr;
+        manual_scale_status_label = nullptr;
+        manual_tare_button = nullptr;
+        manual_safety_label = nullptr;
+        for (int i = 0; i < 3; ++i) {
+            profile_tabs[i] = nullptr;
+            weight_labels[i] = nullptr;
+        }
+        menu_tab = nullptr;
+        wifi_status_text.clear();
+        wifi_detail_text.clear();
+        wifi_qr_payload.clear();
+    }
+
     tabview = lv_tabview_create(screen);
     lv_obj_set_size(tabview, LV_PCT(100), LV_PCT(100));
     lv_obj_align(tabview, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(tabview, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
     lv_obj_add_flag(tabview, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
-    // LVGL defaults scroll snapping to 200-400 ms. On the full-width AMOLED
-    // tabs that makes a completed swipe feel noticeably behind the finger.
     lv_obj_t* tab_content = lv_tabview_get_content(tabview);
     lv_obj_add_event_cb(tab_content, shorten_tab_scroll_animation, LV_EVENT_SCROLL_BEGIN, nullptr);
 
-    // Hide tab buttons for swipe-only interface
     lv_obj_t* tab_btns = lv_tabview_get_tab_btns(tabview);
     lv_obj_add_flag(tab_btns, LV_OBJ_FLAG_HIDDEN);
 
-    // Transparent background
     lv_obj_set_style_bg_opa(tabview, LV_OPA_TRANSP, 0);
 
-    // Add manual and profile tabs
     manual_tab = lv_tabview_add_tab(tabview, "Manual");
     profile_tabs[0] = lv_tabview_add_tab(tabview, "Single");
     profile_tabs[1] = lv_tabview_add_tab(tabview, "Double");
     profile_tabs[2] = lv_tabview_add_tab(tabview, "Custom");
-    wifi_tab = lv_tabview_add_tab(tabview, "WI-FI");
+
+#ifdef SMART_GRIND_SIM
+    has_wifi_tab_ = true;
+#else
+    has_wifi_tab_ = network_manager.should_show_tab();
+#endif
+
+    if (has_wifi_tab_) {
+        wifi_tab = lv_tabview_add_tab(tabview, "WI-FI");
+    } else {
+        wifi_tab = nullptr;
+    }
     menu_tab = lv_tabview_add_tab(tabview, "MENU");
 
     create_manual_page(manual_tab);
 
-    // Default weights
-    float default_weights[3] = {USER_SINGLE_ESPRESSO_WEIGHT_G, USER_DOUBLE_ESPRESSO_WEIGHT_G, USER_CUSTOM_PROFILE_WEIGHT_G};
     const char* names[3] = {"SINGLE", "DOUBLE", "CUSTOM"};
-    
     for (int i = 0; i < 3; i++) {
-        create_profile_page(profile_tabs[i], i, names[i], default_weights[i]);
+        create_profile_page(profile_tabs[i], i, names[i], cached_profile_values_[i]);
     }
 
-    create_wifi_page(wifi_tab);
+    if (has_wifi_tab_) {
+        create_wifi_page(wifi_tab);
+    }
 
-    // Create menu tab page
     create_menu_page(menu_tab);
 
-    update_profile_values(default_weights, GrindMode::WEIGHT);
+    if (profile_long_press_handler_) {
+        set_profile_long_press_handler(profile_long_press_handler_);
+    }
+    if (manual_tare_handler_) {
+        set_manual_tare_handler(manual_tare_handler_);
+    }
 
-    visible = false;
+    update_profile_values(cached_profile_values_, cached_grind_mode_);
+    update_manual_scale(cached_manual_weight_, cached_manual_available_, cached_manual_taring_);
+    update_single_dose_timeout(cached_single_dose_timeout_s_);
+}
+
+void ReadyScreen::rebuild_tabs() {
+    build_tabs();
+    if (visible) {
+        show();
+    } else {
+        hide();
+    }
 }
 
 void ReadyScreen::create_manual_page(lv_obj_t* parent) {
@@ -106,42 +152,45 @@ void ReadyScreen::create_manual_page(lv_obj_t* parent) {
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(parent, 4, 0);
-    lv_obj_set_style_pad_gap(parent, 7, 0);
+    lv_obj_set_style_pad_gap(parent, 4, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t* title = lv_label_create(parent);
-    lv_label_set_text(title, "SINGLE DOSE");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_36, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
+    lv_obj_t* title_label = lv_label_create(parent);
+    lv_label_set_text(title_label, "SINGLE DOSE");
+    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(title_label, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
+    lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0);
 
     manual_weight_label = lv_label_create(parent);
-    lv_label_set_text(manual_weight_label, "0.0g");
-    lv_obj_set_width(manual_weight_label, LV_PCT(100));
-    lv_obj_set_style_text_font(manual_weight_label, &lv_font_montserrat_56, 0);
+    lv_label_set_text(manual_weight_label, "---");
+    lv_obj_set_style_text_font(manual_weight_label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(manual_weight_label, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
     lv_obj_set_style_text_align(manual_weight_label, LV_TEXT_ALIGN_CENTER, 0);
 
     manual_scale_status_label = lv_label_create(parent);
     lv_label_set_text(manual_scale_status_label, "LIVE WEIGHT");
-    lv_obj_set_style_text_font(manual_scale_status_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(manual_scale_status_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(manual_scale_status_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
     lv_obj_set_style_text_align(manual_scale_status_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    manual_tare_button = create_button(parent, "TARE", lv_color_hex(THEME_COLOR_PRIMARY),
-                                       230, 68, &lv_font_montserrat_28);
+    manual_tare_button = create_button(parent, "TARE", lv_color_hex(THEME_COLOR_NEUTRAL), 120, 38, &lv_font_montserrat_16);
 
     manual_safety_label = lv_label_create(parent);
-    lv_label_set_text(manual_safety_label, "60 SECOND LIMIT");
-    lv_obj_set_style_text_font(manual_safety_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(manual_safety_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(manual_safety_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
     lv_obj_set_style_text_align(manual_safety_label, LV_TEXT_ALIGN_CENTER, 0);
+    update_single_dose_timeout(cached_single_dose_timeout_s_);
 }
 
 void ReadyScreen::update_manual_scale(float weight, bool available, bool taring) {
+    cached_manual_weight_ = weight;
+    cached_manual_available_ = available;
+    cached_manual_taring_ = taring;
+
     if (!manual_weight_label || !manual_scale_status_label || !manual_tare_button) return;
 
     if (!available) {
-        lv_label_set_text(manual_weight_label, "--");
+        lv_label_set_text(manual_weight_label, "---");
         lv_label_set_text(manual_scale_status_label, "SCALE UNAVAILABLE");
         lv_obj_add_state(manual_tare_button, LV_STATE_DISABLED);
         return;
@@ -302,7 +351,9 @@ void ReadyScreen::hide() {
 }
 
 void ReadyScreen::update_profile_values(const float values[3], GrindMode mode) {
+    cached_grind_mode_ = mode;
     for (int i = 0; i < 3; i++) {
+        cached_profile_values_[i] = values[i];
         if (profile_tabs[i]) {
             lv_obj_invalidate(profile_tabs[i]);
         }
@@ -321,6 +372,7 @@ void ReadyScreen::update_profile_values(const float values[3], GrindMode mode) {
 }
 
 void ReadyScreen::update_single_dose_timeout(uint32_t seconds) {
+    cached_single_dose_timeout_s_ = seconds;
     if (!manual_safety_label) return;
     char buf[32];
     snprintf(buf, sizeof(buf), "%lu SECOND LIMIT", static_cast<unsigned long>(seconds));
@@ -328,12 +380,13 @@ void ReadyScreen::update_single_dose_timeout(uint32_t seconds) {
 }
 
 void ReadyScreen::set_active_tab(int tab) {
-    if (tab >= 0 && tab < TAB_COUNT) {
+    if (tab >= 0 && tab < tab_count()) {
         lv_tabview_set_act(tabview, tab, LV_ANIM_OFF);
     }
 }
 
 void ReadyScreen::set_profile_long_press_handler(lv_event_cb_t handler) {
+    profile_long_press_handler_ = handler;
     for (int i = 0; i < 3; i++) {
         if (weight_labels[i]) {
             lv_obj_add_event_cb(weight_labels[i], handler, LV_EVENT_LONG_PRESSED, NULL);
@@ -342,6 +395,7 @@ void ReadyScreen::set_profile_long_press_handler(lv_event_cb_t handler) {
 }
 
 void ReadyScreen::set_manual_tare_handler(lv_event_cb_t handler) {
+    manual_tare_handler_ = handler;
     if (manual_tare_button && handler) {
         lv_obj_add_event_cb(manual_tare_button, handler, LV_EVENT_CLICKED,
                             reinterpret_cast<void*>(static_cast<intptr_t>(

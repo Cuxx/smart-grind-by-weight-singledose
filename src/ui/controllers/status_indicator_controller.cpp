@@ -114,17 +114,33 @@ void StatusIndicatorController::update_ble_status_icon() {
         return;
     }
 
+    const bool is_in_menu = ui_manager_->state_machine &&
+                            ui_manager_->state_machine->is_state(UIState::MENU);
+
     auto* bluetooth = ui_manager_->bluetooth_manager;
-    const int8_t state = !bluetooth || !bluetooth->is_enabled()
-                             ? 0
-                             : bluetooth->is_connected() ? 2 : 1;
-    if (state == last_ble_state_) return;
-    last_ble_state_ = state;
-    if (state != 0) {
+    const int8_t ble_state = !bluetooth || !bluetooth->is_enabled()
+                                 ? 0
+                                 : bluetooth->is_connected() ? 2 : 1;
+
+    const bool menu_only = bluetooth && bluetooth->is_icon_menu_only();
+    const bool is_on_menu_tab = ui_manager_->state_machine &&
+                                ui_manager_->state_machine->is_state(UIState::READY) &&
+                                ui_manager_->ready_screen.is_menu_tab(ui_manager_->current_tab);
+
+    const int8_t effective_state = is_in_menu
+                                       ? 0
+                                       : (menu_only && !is_on_menu_tab) ? 0 : ble_state;
+    const int current_tab = ui_manager_->current_tab;
+
+    if (effective_state == last_ble_state_ && current_tab == last_ble_visible_tab_) return;
+    last_ble_state_ = effective_state;
+    last_ble_visible_tab_ = current_tab;
+
+    if (effective_state != 0) {
         lv_obj_clear_flag(ble_status_icon_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_text_color(ble_status_icon_,
-                                    state == 2 ? lv_color_hex(THEME_COLOR_SUCCESS)
-                                               : lv_color_hex(THEME_COLOR_ACCENT),
+                                    effective_state == 2 ? lv_color_hex(THEME_COLOR_SUCCESS)
+                                                         : lv_color_hex(THEME_COLOR_ACCENT),
                                     0);
     } else {
         lv_obj_add_flag(ble_status_icon_, LV_OBJ_FLAG_HIDDEN);
@@ -132,22 +148,38 @@ void StatusIndicatorController::update_ble_status_icon() {
 }
 
 void StatusIndicatorController::update_wifi_status_icon() {
-    if (!wifi_status_icon_) return;
+    if (!wifi_status_icon_ || !ui_manager_) return;
 
-    const int8_t state = !network_manager.is_enabled()
-                             ? 0
-                             : network_manager.is_connected() ? 2 : 1;
-    if (state == last_wifi_state_) return;
-    last_wifi_state_ = state;
-    if (state == 0) {
+    const bool is_in_menu = ui_manager_->state_machine &&
+                            ui_manager_->state_machine->is_state(UIState::MENU);
+
+    const int8_t network_state = !network_manager.is_enabled()
+                                     ? 0
+                                     : network_manager.is_connected() ? 2 : 1;
+
+    const bool menu_only = network_manager.is_icon_menu_only();
+    const bool is_on_menu_tab = ui_manager_->state_machine &&
+                                ui_manager_->state_machine->is_state(UIState::READY) &&
+                                ui_manager_->ready_screen.is_menu_tab(ui_manager_->current_tab);
+
+    const int8_t effective_state = is_in_menu
+                                       ? 0
+                                       : (menu_only && !is_on_menu_tab) ? 0 : network_state;
+    const int current_tab = ui_manager_->current_tab;
+
+    if (effective_state == last_wifi_state_ && current_tab == last_wifi_visible_tab_) return;
+    last_wifi_state_ = effective_state;
+    last_wifi_visible_tab_ = current_tab;
+
+    if (effective_state == 0) {
         lv_obj_add_flag(wifi_status_icon_, LV_OBJ_FLAG_HIDDEN);
         return;
     }
 
     lv_obj_clear_flag(wifi_status_icon_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_color(wifi_status_icon_,
-                                state == 2 ? lv_color_hex(THEME_COLOR_TEXT_PRIMARY)
-                                           : lv_color_hex(THEME_COLOR_TEXT_SECONDARY),
+                                effective_state == 2 ? lv_color_hex(THEME_COLOR_TEXT_PRIMARY)
+                                                     : lv_color_hex(THEME_COLOR_TEXT_SECONDARY),
                                 0);
 }
 

@@ -25,7 +25,10 @@ public:
     void handle_diagnostics_reset();
     void handle_ble_toggle();
     void handle_ble_startup_toggle();
+    void handle_ble_icon_toggle();
     void handle_wifi_toggle();
+    void handle_wifi_tab_toggle();
+    void handle_wifi_icon_toggle();
     void handle_logging_toggle();
     void handle_grind_mode_swipe_toggle();
     void handle_grind_mode_radio_button();

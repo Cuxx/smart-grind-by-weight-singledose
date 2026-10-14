@@ -300,6 +300,7 @@ void MenuScreen::create_bluetooth_page(lv_obj_t* parent) {
 
     create_toggle_row(parent, "Enabled", &ble_toggle);
     create_toggle_row(parent, "Startup", &ble_startup_toggle);
+    create_toggle_row(parent, "Hide Icon", &ble_icon_toggle);
 
     // BLE Status label
     ble_status_label = lv_label_create(parent);
@@ -325,6 +326,10 @@ void MenuScreen::create_bluetooth_page(lv_obj_t* parent) {
         lv_obj_add_event_cb(ble_startup_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::BLE_STARTUP_TOGGLE)));
     }
+    if (ble_icon_toggle) {
+        lv_obj_add_event_cb(ble_icon_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::BLE_ICON_TOGGLE)));
+    }
 }
 
 namespace {
@@ -348,11 +353,21 @@ void MenuScreen::create_network_page(lv_obj_t* parent) {
     lv_obj_set_scrollbar_mode(parent, LV_SCROLLBAR_MODE_AUTO);
 
     create_toggle_row(parent, "Enabled", &wifi_toggle);
+    create_toggle_row(parent, "WiFi Tab", &wifi_tab_toggle);
+    create_toggle_row(parent, "Hide Icon", &wifi_icon_toggle);
 
     using ET = EventBridgeLVGL::EventType;
     if (wifi_toggle) {
         lv_obj_add_event_cb(wifi_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::WIFI_TOGGLE)));
+    }
+    if (wifi_tab_toggle) {
+        lv_obj_add_event_cb(wifi_tab_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::WIFI_TAB_TOGGLE)));
+    }
+    if (wifi_icon_toggle) {
+        lv_obj_add_event_cb(wifi_icon_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::WIFI_ICON_TOGGLE)));
     }
 
     network_status_label = lv_label_create(parent);
@@ -399,6 +414,20 @@ void MenuScreen::update_network_status() {
             lv_obj_add_state(wifi_toggle, LV_STATE_CHECKED);
         } else {
             lv_obj_clear_state(wifi_toggle, LV_STATE_CHECKED);
+        }
+    }
+    if (wifi_tab_toggle) {
+        if (network_manager.is_tab_enabled()) {
+            lv_obj_add_state(wifi_tab_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(wifi_tab_toggle, LV_STATE_CHECKED);
+        }
+    }
+    if (wifi_icon_toggle) {
+        if (network_manager.is_icon_menu_only()) {
+            lv_obj_add_state(wifi_icon_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(wifi_icon_toggle, LV_STATE_CHECKED);
         }
     }
 
@@ -1034,6 +1063,14 @@ void MenuScreen::update_ble_status() {
     } else {
         lv_obj_clear_state(ble_toggle, LV_STATE_CHECKED);
     }
+
+    if (ble_icon_toggle) {
+        if (bluetooth_manager->is_icon_menu_only()) {
+            lv_obj_add_state(ble_icon_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(ble_icon_toggle, LV_STATE_CHECKED);
+        }
+    }
     
     // Update status text
     if (bluetooth_manager->is_enabled()) {
@@ -1401,6 +1438,7 @@ lv_obj_t* MenuScreen::create_toggle_row(lv_obj_t* parent, const char* text, lv_o
     lv_obj_set_flex_align(row_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t* label = lv_label_create(row_container);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
     lv_label_set_text(label, text);
 
     *out_toggle = lv_switch_create(row_container);

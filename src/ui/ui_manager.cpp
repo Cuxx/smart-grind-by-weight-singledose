@@ -528,3 +528,20 @@ void UIManager::update_auto_actions() {
         }
     }
 }
+
+void UIManager::rebuild_ready_tabs() {
+    ready_screen.rebuild_tabs();
+    if (ready_controller_) {
+        ready_controller_->rebind_tabs();
+        ready_controller_->refresh_profiles();
+    }
+    if (grind_controller) {
+        ready_screen.update_single_dose_timeout(grind_controller->get_single_dose_timeout_s());
+    }
+    int target_tab = current_tab;
+    if (target_tab >= ready_screen.tab_count()) {
+        target_tab = ready_screen.tab_count() - 1;
+    }
+    set_current_tab(target_tab);
+    ready_screen.set_active_tab(target_tab);
+}

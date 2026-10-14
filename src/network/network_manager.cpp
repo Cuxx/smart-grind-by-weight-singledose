@@ -78,6 +78,18 @@ bool SmartGrindNetworkManager::set_enabled(bool enabled) {
     return true;
 }
 
+bool SmartGrindNetworkManager::set_tab_enabled(bool enabled) {
+    tab_enabled_.store(enabled);
+    if (!preferences_) return false;
+    return preferences_->putBool("wifi_tab", enabled) > 0;
+}
+
+bool SmartGrindNetworkManager::set_icon_menu_only(bool menu_only) {
+    icon_menu_only_.store(menu_only);
+    if (!preferences_) return false;
+    return preferences_->putBool("wifi_icon_menu", menu_only) > 0;
+}
+
 bool SmartGrindNetworkManager::set_credentials(const String& ssid, const String& password) {
     if (!preferences_ || ssid.isEmpty() || ssid.length() > 32 || password.length() > 63) {
         return false;
@@ -159,6 +171,8 @@ String SmartGrindNetworkManager::ip_address() const {
 
 void SmartGrindNetworkManager::load_settings() {
     enabled_.store(preferences_ && preferences_->getBool("wifi_on", true));
+    tab_enabled_.store(preferences_ ? preferences_->getBool("wifi_tab", true) : true);
+    icon_menu_only_.store(preferences_ ? preferences_->getBool("wifi_icon_menu", false) : false);
     ssid_ = preferences_ ? preferences_->getString("wifi_ssid", "") : String();
     password_ = preferences_ ? preferences_->getString("wifi_pass", "") : String();
     hostname_ = preferences_ ? sanitize_hostname(preferences_->getString("wifi_host", "")) : String();
