@@ -20,11 +20,11 @@ private:
     void update_warning_icon();
     void update_firmware_update_icon();
 
+    void draw_wifi_icon(lv_event_t* e);
+
     UIManager* ui_manager_;
     lv_obj_t* ble_status_icon_ = nullptr;
-    lv_obj_t* wifi_container_ = nullptr;
     lv_obj_t* wifi_status_icon_ = nullptr;
-    lv_obj_t* wifi_bars_[4] = {nullptr, nullptr, nullptr, nullptr};
     lv_obj_t* warning_icon_ = nullptr;
     lv_obj_t* firmware_update_icon_ = nullptr;
     int8_t last_ble_state_ = -1;
