@@ -42,6 +42,7 @@ using String = std::string;
 #define LOG_BLE(...) ((void)0)
 constexpr float GRIND_AUTOTUNE_LATENCY_MIN_MS = 30, GRIND_AUTOTUNE_LATENCY_MAX_MS = 300;
 constexpr float GRIND_LATENCY_TO_COAST_RATIO_MIN = 0.1f, GRIND_LATENCY_TO_COAST_RATIO_MAX = 3;
+constexpr uint32_t GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S = 60;
 struct Preferences {
     inline static bool fail_read = false;
     inline static int writes = 0, fail_write = -1, opens = 0, fail_open = -1;
@@ -77,6 +78,7 @@ struct GrindController {
     static constexpr const char* PREF_KEY_GRIND_FRESHNESS_HOURS = "freshness";
     bool save_motor_latency(float);
     bool save_coast_ratio(float);
+    bool save_single_dose_timeout(uint32_t) { return true; }
 };
 struct ProfileController {
     bool succeed = true;
@@ -106,11 +108,19 @@ struct StatusClient {
     int calls = 0;
     bool configure(bool next_enabled, const char*) { ++calls; enabled = next_enabled; return succeed; }
 } gaggimate_status_client;
+struct NetworkManager {
+    bool set_tab_enabled(bool) { return true; }
+    bool set_icon_menu_only(bool) { return true; }
+} network_manager;
+struct BluetoothManager {
+    void set_icon_menu_only(bool) {}
+};
 ''' + settings + r'''
 struct DeviceApi {
     HardwareManager* hardware_;
     ProfileController* profile_controller_;
     GrindController* grind_controller_;
+    BluetoothManager* bluetooth_manager_ = nullptr;
     bool apply_settings(const DeviceSettingsUpdate&);
 };
 ''' + implementation + r'''

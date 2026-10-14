@@ -307,6 +307,8 @@ void GrindController::stop_grind() {
         return;
     }
     
+    grinder->stop();
+
     // Cancelled grinds just discard PSRAM data and go to IDLE
     grind_logger.discard_current_session();
     
