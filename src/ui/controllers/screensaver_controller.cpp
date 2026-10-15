@@ -77,6 +77,17 @@ String ScreensaverController::selected_clock_position() const {
     return "center";
 }
 
+String ScreensaverController::selected_clock_layout() const {
+    Preferences preferences;
+    if (!preferences.begin("screensaver", true)) return "horizontal";
+    const String layout = preferences.getString("clock_layout", "horizontal");
+    preferences.end();
+    if (layout == "stacked" || layout == "horizontal") {
+        return layout;
+    }
+    return "horizontal";
+}
+
 bool ScreensaverController::is_startup_enabled() const {
     return ScreensaverSettings::is_startup_enabled();
 }
@@ -350,17 +361,25 @@ bool ScreensaverController::create_clock() {
     minutes_label_ = lv_label_create(overlay_screen_);
     if (!minutes_label_) return false;
 
+    const String layout = selected_clock_layout();
+    const lv_font_t* font = (layout == "stacked") ? &lv_font_montserrat_160 : &lv_font_montserrat_80;
+
     lv_obj_t* labels[] = {colon_label_, hours_label_, minutes_label_};
     for (lv_obj_t* lbl : labels) {
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_60, 0);
+        lv_obj_set_style_text_font(lbl, font, 0);
         lv_obj_set_style_text_color(lbl, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
     }
 
-    lv_obj_set_style_text_align(colon_label_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_align(hours_label_, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_set_style_text_align(minutes_label_, LV_TEXT_ALIGN_LEFT, 0);
+    if (layout == "stacked") {
+        lv_obj_set_style_text_align(hours_label_, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_align(minutes_label_, LV_TEXT_ALIGN_CENTER, 0);
+    } else {
+        lv_obj_set_style_text_align(colon_label_, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_align(hours_label_, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_set_style_text_align(minutes_label_, LV_TEXT_ALIGN_LEFT, 0);
+        lv_label_set_text(colon_label_, ":");
+    }
 
-    lv_label_set_text(colon_label_, ":");
     lv_label_set_text(hours_label_, "");
     lv_label_set_text(minutes_label_, "");
 
@@ -394,10 +413,6 @@ void ScreensaverController::update_clock() {
         return;
     }
 
-    lv_obj_remove_flag(colon_label_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_remove_flag(hours_label_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_remove_flag(minutes_label_, LV_OBJ_FLAG_HIDDEN);
-
     char h_str[4];
     char m_str[4];
     snprintf(h_str, sizeof(h_str), "%02d", timeinfo.tm_hour);
@@ -405,12 +420,23 @@ void ScreensaverController::update_clock() {
     lv_label_set_text(hours_label_, h_str);
     lv_label_set_text(minutes_label_, m_str);
 
+    const String layout = selected_clock_layout();
     const String pos = selected_clock_position();
-    int16_t base_y = 0;
-    if (pos == "top") {
-        base_y = -130;
-    } else if (pos == "bottom") {
-        base_y = 130;
+
+    const lv_font_t* font = (layout == "stacked") ? &lv_font_montserrat_160 : &lv_font_montserrat_80;
+    if (lv_obj_get_style_text_font(hours_label_, LV_PART_MAIN) != font) {
+        lv_obj_set_style_text_font(colon_label_, font, 0);
+        lv_obj_set_style_text_font(hours_label_, font, 0);
+        lv_obj_set_style_text_font(minutes_label_, font, 0);
+        if (layout == "stacked") {
+            lv_obj_set_style_text_align(hours_label_, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_set_style_text_align(minutes_label_, LV_TEXT_ALIGN_CENTER, 0);
+        } else {
+            lv_obj_set_style_text_align(colon_label_, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_set_style_text_align(hours_label_, LV_TEXT_ALIGN_RIGHT, 0);
+            lv_obj_set_style_text_align(minutes_label_, LV_TEXT_ALIGN_LEFT, 0);
+            lv_label_set_text(colon_label_, ":");
+        }
     }
 
     // Subtle burn-in shift based on current minute (orbit pattern ±2 px)
@@ -418,12 +444,42 @@ void ScreensaverController::update_clock() {
     static const int8_t shift_y[] = {0, 1, -1, 2, -2, -1, 1, 0};
     const uint8_t idx = static_cast<uint8_t>(timeinfo.tm_min % 8);
 
-    lv_obj_align(colon_label_, LV_ALIGN_CENTER, shift_x[idx], base_y + shift_y[idx]);
+    if (layout == "stacked") {
+        lv_obj_add_flag(colon_label_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(hours_label_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(minutes_label_, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_update_layout(colon_label_);
-    lv_obj_update_layout(hours_label_);
-    lv_obj_update_layout(minutes_label_);
+        int16_t hours_y = -70;
+        int16_t minutes_y = 70;
+        if (pos == "top") {
+            hours_y = -140;
+            minutes_y = 0;
+        } else if (pos == "bottom") {
+            hours_y = 0;
+            minutes_y = 140;
+        }
 
-    lv_obj_align_to(hours_label_, colon_label_, LV_ALIGN_OUT_LEFT_MID, -2, 0);
-    lv_obj_align_to(minutes_label_, colon_label_, LV_ALIGN_OUT_RIGHT_MID, 2, 0);
+        lv_obj_align(hours_label_, LV_ALIGN_CENTER, shift_x[idx], hours_y + shift_y[idx]);
+        lv_obj_align(minutes_label_, LV_ALIGN_CENTER, shift_x[idx], minutes_y + shift_y[idx]);
+    } else {
+        lv_obj_remove_flag(colon_label_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(hours_label_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(minutes_label_, LV_OBJ_FLAG_HIDDEN);
+
+        int16_t base_y = 0;
+        if (pos == "top") {
+            base_y = -130;
+        } else if (pos == "bottom") {
+            base_y = 130;
+        }
+
+        lv_obj_align(colon_label_, LV_ALIGN_CENTER, shift_x[idx], base_y + shift_y[idx]);
+
+        lv_obj_update_layout(colon_label_);
+        lv_obj_update_layout(hours_label_);
+        lv_obj_update_layout(minutes_label_);
+
+        lv_obj_align_to(hours_label_, colon_label_, LV_ALIGN_OUT_LEFT_MID, -2, 0);
+        lv_obj_align_to(minutes_label_, colon_label_, LV_ALIGN_OUT_RIGHT_MID, 2, 0);
+    }
 }

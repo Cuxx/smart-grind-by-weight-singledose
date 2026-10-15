@@ -54,6 +54,7 @@ private:
 
     String selected_style() const;
     String selected_clock_position() const;
+    String selected_clock_layout() const;
     bool has_custom_image() const;
     bool create_builtin(const String& style);
     bool create_clock();

@@ -79,13 +79,23 @@ void ReadyUIController::handle_tab_change(int tab) {
     }
 
     ui_manager_->current_tab = tab;
+    Preferences* prefs = ui_manager_->get_hardware_manager()
+                             ? ui_manager_->get_hardware_manager()->get_preferences()
+                             : nullptr;
+
     if (ui_manager_->ready_screen.is_manual_tab(tab)) {
         ui_manager_->current_mode = GrindMode::MANUAL;
         ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
+        if (prefs) {
+            prefs->putBool("manual_active", true);
+        }
     } else if (ui_manager_->profile_controller && ui_manager_->ready_screen.is_profile_tab(tab)) {
         ui_manager_->profile_controller->set_current_profile(ui_manager_->ready_screen.profile_index_for_tab(tab));
         ui_manager_->current_mode = ui_manager_->profile_controller->get_grind_mode();
         ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
+        if (prefs) {
+            prefs->putBool("manual_active", false);
+        }
         refresh_profiles();
     }
 
@@ -179,6 +189,9 @@ void ReadyUIController::ready_gesture_handler(lv_event_t* e) {
         if (target_tab >= 0 && target_tab < ui->ready_screen.tab_count()) {
             lv_tabview_set_act(ready_tabs, static_cast<uint32_t>(target_tab), LV_ANIM_ON);
             lv_indev_wait_release(input);
+            if (ui->ready_controller_) {
+                ui->ready_controller_->handle_tab_change(target_tab);
+            }
         }
         lv_event_stop_bubbling(e);
         return;

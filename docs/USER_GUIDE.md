@@ -215,7 +215,8 @@ grinder.
 - **Clock screensavers**:
   - **Clock (Black)**: Large time display on an AMOLED solid black background. When Wi-Fi is unavailable or NTP time has not synchronized, the screen stays cleanly black.
   - **Clock (Custom)**: Overlays the large clock on your uploaded custom image. When unsynchronized, it displays the image cleanly without the time.
-  - **Clock Position**: Choose between `Center`, `Top`, or `Bottom`. The colon (`:`) stays fixed at horizontal center without drifting when digit widths vary.
+  - **Clock Layout**: Choose between `Horizontal (HH:MM)` using an 80 px Montserrat Bold font with a stationary colon, or `Stacked (HH / MM)` using a prominent 160 px Montserrat Bold font.
+  - **Clock Position**: Choose between `Center`, `Top`, or `Bottom`.
   - **Timezone**: Set your local POSIX TZ string (default `CET-1CEST,M3.5.0,M10.5.0/3`) or tap `Auto` to detect it from your browser.
   - **Burn-in protection**: Periodically applies subtle 1–2 px subpixel shifting every minute to protect the AMOLED screen.
 - **GaggiMate status**: Enter the machine hostname (normally
