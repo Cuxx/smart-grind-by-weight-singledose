@@ -299,6 +299,7 @@ private:
     void final_measurement(const GrindLoopData& loop_data);
     void monitor_mechanical_instability(const GrindLoopData& loop_data);
 
+    bool should_purge() const;
     bool check_timeout() const;
     uint8_t get_current_phase_id() const;
     
