@@ -1,10 +1,15 @@
 name: Deploy Web Flasher
 
 on:
+  workflow_run:
+    workflows: ["Build and Release Firmware"]
+    types:
+      - completed
   push:
     branches: [ main ]
     paths:
-      - 'tools/web-flasher/**'  # Deploy when web-flasher files change (after firmware commit)
+      - 'tools/web-flasher/**'
+      - '.github/workflows/deploy-web-flasher.yml'
   release:
     types: [ published, unpublished, deleted ]
   workflow_dispatch:
@@ -22,6 +27,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
