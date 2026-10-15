@@ -196,6 +196,19 @@ Both automation settings rely on the same smoothed weight deltas used for flow d
 
 ---
 
+## Wi-Fi connectivity & performance
+
+Smart Grind includes an integrated web interface accessible over Wi-Fi (`http://smartgrind.local`):
+- **Signal indicator**: The status icon on the touchscreen reflects signal strength with thresholds calibrated for appliances with metal enclosures:
+  - 4 bars (Excellent): ≥ -67 dBm
+  - 3 bars (Good): -68 to -75 dBm
+  - 2 bars (Fair): -76 to -83 dBm
+  - 1 bar (Weak): < -83 dBm
+- **Live signal in Web UI**: The exact real-time RSSI (in dBm along with a qualitative rating) is shown under **Settings → Connectivity → Wi-Fi**.
+- **Wi-Fi High Performance Mode**: Configurable under **Settings → Connectivity**. Enabled by default (mains-powered appliance), it sets transmission power to 19.5 dBm and disables modem sleep for optimal throughput, instant responsiveness and connection stability. When switched off, power-saving mode (15 dBm with modem sleep) is active.
+
+---
+
 ## Bluetooth connectivity
 
 Bluetooth can be configured in **Menu → Bluetooth** with optional auto-startup (5-minute timer) or manual control (30-minute timer when manually enabled). The blue Bluetooth symbol in the top-right corner indicates when active. Bluetooth enables wireless firmware updates via BLE OTA, legacy grind-data export and device management. Grind session logging is configurable in **Menu → Data → Logging** and is enabled by default so the local web History page works immediately; disable it if you do not want sessions written to flash.

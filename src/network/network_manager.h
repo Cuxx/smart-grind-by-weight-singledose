@@ -42,6 +42,9 @@ public:
     String ip_address() const;
     int get_rssi() const;
     int8_t get_signal_level() const;
+    bool is_performance_mode() const { return performance_mode_.load(); }
+    bool set_performance_mode(bool enabled);
+    void apply_power_settings();
     bool is_time_synchronized() const;
     void configure_timezone(const String& tz);
     String timezone() const;
@@ -56,6 +59,7 @@ private:
     std::atomic<bool> enabled_{false};
     std::atomic<bool> tab_enabled_{true};
     std::atomic<bool> icon_menu_only_{false};
+    std::atomic<bool> performance_mode_{true};
     bool ever_connected_ = false;
     bool mdns_started_ = false;
     uint32_t state_changed_at_ms_ = 0;

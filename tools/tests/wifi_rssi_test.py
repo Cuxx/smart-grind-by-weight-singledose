@@ -45,9 +45,9 @@ struct MockNetworkManager {
         if (!is_connected()) return 0;
         const int rssi = get_rssi();
         if (rssi > 0 || rssi < -110) return 1;
-        if (rssi >= -60) return 4;
-        if (rssi >= -70) return 3;
-        if (rssi >= -80) return 2;
+        if (rssi >= -67) return 4;
+        if (rssi >= -75) return 3;
+        if (rssi >= -83) return 2;
         return 1;
     }
 } network_manager;
@@ -141,25 +141,25 @@ public:
 int main() {
     // 1. Signal level thresholds:
     network_manager.net_state = NetworkState::WIFI_CONNECTED;
-    network_manager.mock_rssi = -45; // >= -60
+    network_manager.mock_rssi = -45; // >= -67
     assert(network_manager.get_signal_level() == 4);
 
-    network_manager.mock_rssi = -60; // boundary
+    network_manager.mock_rssi = -67; // boundary
     assert(network_manager.get_signal_level() == 4);
 
-    network_manager.mock_rssi = -65; // -61 to -70
+    network_manager.mock_rssi = -70; // -68 to -75
     assert(network_manager.get_signal_level() == 3);
 
-    network_manager.mock_rssi = -70; // boundary
+    network_manager.mock_rssi = -75; // boundary
     assert(network_manager.get_signal_level() == 3);
 
-    network_manager.mock_rssi = -75; // -71 to -80
+    network_manager.mock_rssi = -80; // -76 to -83
     assert(network_manager.get_signal_level() == 2);
 
-    network_manager.mock_rssi = -80; // boundary
+    network_manager.mock_rssi = -83; // boundary
     assert(network_manager.get_signal_level() == 2);
 
-    network_manager.mock_rssi = -85; // < -80
+    network_manager.mock_rssi = -85; // < -83
     assert(network_manager.get_signal_level() == 1);
 
     network_manager.mock_rssi = 10;  // invalid positive
@@ -202,7 +202,7 @@ int main() {
     // Grinding completes, return to READY:
     grind.active = false;
     sm.current_state = UIState::READY;
-    network_manager.mock_rssi = -72; // changed to 2 bars
+    network_manager.mock_rssi = -80; // changed to 2 bars
 
     indicator.update_wifi_status_icon(20000);
     assert(indicator.rendered_bar_level == 2);

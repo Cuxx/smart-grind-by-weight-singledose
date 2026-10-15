@@ -634,6 +634,10 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
         settings.has_wifi_icon_menu = true;
         settings.wifi_icon_menu = form_bool(value("wifi_icon_menu"));
     }
+    if (request->hasParam("wifi_performance_mode", true)) {
+        settings.has_wifi_performance_mode = true;
+        settings.wifi_performance_mode = form_bool(value("wifi_performance_mode"));
+    }
     if (request->hasParam("bluetooth_icon_menu", true)) {
         settings.has_bluetooth_icon_menu = true;
         settings.bluetooth_icon_menu = form_bool(value("bluetooth_icon_menu"));
@@ -800,6 +804,9 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     if (settings.has_wifi_icon_menu) {
         saved = network_manager.set_icon_menu_only(settings.wifi_icon_menu) && saved;
     }
+    if (settings.has_wifi_performance_mode) {
+        saved = network_manager.set_performance_mode(settings.wifi_performance_mode) && saved;
+    }
     if (settings.has_bluetooth_icon_menu) {
         if (bluetooth_manager_) {
             bluetooth_manager_->set_icon_menu_only(settings.bluetooth_icon_menu);
@@ -933,7 +940,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"clock_font\":\"%s\",\"timezone\":\"%s\","
              "\"has_custom_screensaver\":%s,\"has_custom_clock_font\":%s,"
              "\"gaggimate_host\":\"%s\"},"
-             "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,"
+             "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"wifi_performance_mode\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,"
              "\"tabs\":{\"manual\":%s,\"single\":%s,\"double\":%s,\"custom\":%s}}",
              profile.current_profile,
              profile.mode == GrindMode::TIME ? "time" : "weight",
@@ -962,6 +969,7 @@ void DeviceApi::refresh_settings_cache() {
              gaggimate_host.c_str(),
              network_manager.is_tab_enabled() ? "true" : "false",
              network_manager.is_icon_menu_only() ? "true" : "false",
+             network_manager.is_performance_mode() ? "true" : "false",
              read_bool("bluetooth", "startup", true) ? "true" : "false",
              (bluetooth_manager_ ? bluetooth_manager_->is_icon_menu_only() : read_bool("bluetooth", "icon_menu", false)) ? "true" : "false",
              tab_manual ? "true" : "false",

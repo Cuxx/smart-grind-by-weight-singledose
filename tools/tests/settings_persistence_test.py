@@ -111,6 +111,7 @@ struct StatusClient {
 struct NetworkManager {
     bool set_tab_enabled(bool) { return true; }
     bool set_icon_menu_only(bool) { return true; }
+    bool set_performance_mode(bool) { return true; }
     void configure_timezone(const String&) {}
 } network_manager;
 struct BluetoothManager {
