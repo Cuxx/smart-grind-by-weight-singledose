@@ -54,8 +54,8 @@ Access **Menu → Grind Settings** to configure:
   motor pulse from 30–300 ms in 5 ms steps. Use **Menu → Tune Pulses** first;
   this manual control is a fallback when automatic tuning cannot complete.
 - **Purging** *(Advanced)*: Control how the grinder saturates itself before weight-mode grinding
-  - **Prime mode**: Keeps the coffee used to saturate the grinder, continues immediately
-  - **Purge mode** (default): Prompts you to discard stale grinds before continuing
+  - **Prime mode**: Keeps all coffee and grinds continuously in a single smooth run directly to the target weight without intermediate motor stopping
+  - **Purge mode** (default): Prompts you to discard stale grinds before continuing when coffee has aged past the freshness window
   - **Amount slider**: Configure purge/prime amount (0.1g-5.0g, default 1.0g). Amount is a minimum target; actual output will be slightly higher.
   - **"Keep purge grinds from now on" checkbox**: Appears during purge confirmation - switches to Prime mode when checked
 

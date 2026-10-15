@@ -6,6 +6,11 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+### Grinding & Workflow
+- In **Prime mode** (Keep coffee) and when grounds are fresh, grinding now proceeds continuously from tare directly to target weight without intermediate motor stopping or settling pause.
+- Purge pause is now cleanly restricted to **Purge mode** (Remove grinds) when grounds are stale.
+- Fixed purge state tracking so confirming a purge properly records the timestamp to avoid repeated purge prompts within the freshness window.
+
 ### Screensaver & Typography
 - Added custom clock font upload support (`.ttf` and `.otf`) via the web interface.
 - Integrated LVGL TinyTTF runtime vector font rasterization:
