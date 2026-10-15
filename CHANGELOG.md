@@ -4,7 +4,7 @@ This file records the user-visible changes in the community-maintained release
 line. Earlier release history remains available in the original project's
 [GitHub releases](https://github.com/jaapp/smart-grind-by-weight/releases).
 
-## [Unreleased]
+## [1.6.3] - 2026-10-15
 
 ### Screensaver
 - Added large clock screensaver styles (`Clock (Black)` and `Clock (Custom)`).
@@ -439,3 +439,4 @@ fixes described above.
 [1.6.0]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.0
 [1.6.1]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.1
 [1.6.2]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.2
+[1.6.3]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.3
