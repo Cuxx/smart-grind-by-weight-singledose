@@ -4,7 +4,7 @@ This file records the user-visible changes in the community-maintained release
 line. Earlier release history remains available in the original project's
 [GitHub releases](https://github.com/jaapp/smart-grind-by-weight/releases).
 
-## [Unreleased]
+## [1.6.4] - 2026-10-15
 
 ### Grinding & Workflow
 - In **Prime mode** (Keep coffee) and when grounds are fresh, grinding now proceeds continuously from tare directly to target weight without intermediate motor stopping or settling pause.
@@ -457,3 +457,4 @@ fixes described above.
 [1.6.1]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.1
 [1.6.2]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.2
 [1.6.3]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.3
+[1.6.4]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.4
