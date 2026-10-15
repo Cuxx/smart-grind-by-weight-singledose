@@ -216,6 +216,7 @@ grinder.
   - **Clock (Black)**: Large time display on an AMOLED solid black background. When Wi-Fi is unavailable or NTP time has not synchronized, the screen stays cleanly black.
   - **Clock (Custom)**: Overlays the large clock on your uploaded custom image. When unsynchronized, it displays the image cleanly without the time.
   - **Clock Layout**: Choose between `Horizontal (HH:MM)` using an 80 px Montserrat Bold font with a stationary colon, or `Stacked (HH / MM)` using a prominent 160 px Montserrat Bold font.
+  - **Clock Font**: Choose between the built-in `Montserrat (Default)` font or upload your own `Custom font (.ttf/.otf)`. Supports standard TrueType and OpenType fonts up to 512 KB, dynamically rasterized into PSRAM using LVGL's TinyTTF engine for razor-sharp scaling at 80 px (horizontal) and 160 px (stacked) with graceful fallback.
   - **Clock Position**: Choose between `Center`, `Top`, or `Bottom`.
   - **Clock Colour**: Choose any custom HEX colour or select from AMOLED-tailored presets (White, Amber, Warm Gold, Ice Cyan, Mint, Coral) with zero rendering overhead.
   - **Test screensaver**: Tap **Test screensaver** in the web interface to instantly activate the screensaver on the physical display. Touching the panel or changing weight on the scale restores normal operation.

@@ -86,6 +86,28 @@ struct ScreensaverUploadState {
     bool complete;
 };
 
+struct ClockFontUploadState {
+    File file;
+    size_t total_bytes = 0;
+    bool success = false;
+    bool complete = false;
+    uint8_t header_buf[4]{};
+    uint8_t header_len = 0;
+};
+
+inline bool is_valid_font_magic(const uint8_t* header) {
+    if (!header) return false;
+    // 0x00010000 (TrueType)
+    if (header[0] == 0x00 && header[1] == 0x01 && header[2] == 0x00 && header[3] == 0x00) return true;
+    // 'OTTO' (OpenType / CFF)
+    if (header[0] == 'O' && header[1] == 'T' && header[2] == 'T' && header[3] == 'O') return true;
+    // 'true' (Apple TrueType)
+    if (header[0] == 't' && header[1] == 'r' && header[2] == 'u' && header[3] == 'e') return true;
+    // 'typ1' (PostScript)
+    if (header[0] == 't' && header[1] == 'y' && header[2] == 'p' && header[3] == '1') return true;
+    return false;
+}
+
 constexpr uint32_t OTA_REBOOT_DELAY_MS = 1500;
 constexpr uint32_t OTA_PREPARE_TIMEOUT_MS = 15000;
 constexpr uint32_t OTA_READY_WINDOW_MS = 30000;
@@ -667,6 +689,164 @@ void DeviceWebServer::configure_routes() {
         if (deleted) device_api.mark_settings_dirty();
         request->send(deleted ? 200 : 500, "application/json",
                       deleted ? "{\"deleted\":true}" : "{\"error\":\"Could not delete screensaver\"}");
+    });
+
+    server_.on(
+        AsyncURIMatcher::exact("/api/v1/screensaver/font"), HTTP_POST,
+        [](AsyncWebServerRequest* request) {
+            auto* state = static_cast<ClockFontUploadState*>(request->_tempObject);
+            request->_tempObject = nullptr;
+            if (!state || !state->complete) {
+                delete state;
+                request->send(400, "application/json", "{\"error\":\"Clock font was not received\"}");
+                return;
+            }
+            const bool ok = state->success;
+            delete state;
+            request->send(ok ? 200 : 500, "application/json",
+                          ok ? "{\"saved\":true}" : "{\"error\":\"Font upload failed\"}");
+        },
+        [this](AsyncWebServerRequest* request, String, size_t index,
+               uint8_t* data, size_t len, bool final) {
+            if (request->getResponse()) return;
+            auto* state = static_cast<ClockFontUploadState*>(request->_tempObject);
+            if (index == 0) {
+                if (!request_origin_allowed(request)) {
+                    request->send(403, "application/json", "{\"error\":\"Request origin is not allowed\"}");
+                    return;
+                }
+                if (ota_active_.load() || (grind_controller_ && grind_controller_->is_active()) ||
+                    (bluetooth_manager_ && bluetooth_manager_->is_transfer_active())) {
+                    request->send(409, "application/json", "{\"error\":\"Stop the grinder and other transfers before uploading\"}");
+                    return;
+                }
+                if (request->contentLength() > CLOCK_FONT_MAX_SIZE) {
+                    request->send(413, "application/json", "{\"error\":\"Font file exceeds maximum size of 512 KB\"}");
+                    return;
+                }
+                state = new (std::nothrow) ClockFontUploadState();
+                request->_tempObject = state;
+                if (!state) {
+                    request->send(503, "application/json", "{\"error\":\"Not enough memory to start upload\"}");
+                    return;
+                }
+                if (LittleFS.exists(CLOCK_FONT_TEMP_FILENAME)) {
+                    LittleFS.remove(CLOCK_FONT_TEMP_FILENAME);
+                }
+                state->file = LittleFS.open(CLOCK_FONT_TEMP_FILENAME, "w");
+                if (!state->file) {
+                    delete state;
+                    request->_tempObject = nullptr;
+                    request->send(500, "application/json", "{\"error\":\"Could not create font file\"}");
+                    return;
+                }
+                request->onDisconnect([state]() {
+                    if (state) {
+                        if (state->file) state->file.close();
+                        if (!state->complete && LittleFS.exists(CLOCK_FONT_TEMP_FILENAME)) {
+                            LittleFS.remove(CLOCK_FONT_TEMP_FILENAME);
+                        }
+                        delete state;
+                    }
+                });
+            }
+            if (!state || !state->file) return;
+
+            if (state->total_bytes + len > CLOCK_FONT_MAX_SIZE) {
+                state->complete = true;
+                state->success = false;
+                state->file.close();
+                LittleFS.remove(CLOCK_FONT_TEMP_FILENAME);
+                request->send(413, "application/json", "{\"error\":\"Font file exceeds maximum size of 512 KB\"}");
+                return;
+            }
+
+            while (state->header_len < 4 && state->header_len < (state->total_bytes + len)) {
+                size_t offset = state->header_len - state->total_bytes;
+                if (offset < len) {
+                    state->header_buf[state->header_len++] = data[offset];
+                } else break;
+            }
+
+            if (len) {
+                const size_t written = state->file.write(data, len);
+                if (written != len) {
+                    state->complete = true;
+                    state->success = false;
+                    state->file.close();
+                    LittleFS.remove(CLOCK_FONT_TEMP_FILENAME);
+                    request->send(500, "application/json", "{\"error\":\"Could not store font data\"}");
+                    return;
+                }
+                state->total_bytes += written;
+            }
+
+            if (final) {
+                state->complete = true;
+                state->file.flush();
+                state->file.close();
+
+                if (state->total_bytes < 16 || !is_valid_font_magic(state->header_buf)) {
+                    state->success = false;
+                    LittleFS.remove(CLOCK_FONT_TEMP_FILENAME);
+                    request->send(400, "application/json", "{\"error\":\"Invalid font format. Expected TTF or OTF\"}");
+                    return;
+                }
+
+                if (LittleFS.exists(CLOCK_FONT_FILENAME)) {
+                    LittleFS.remove(CLOCK_FONT_FILENAME);
+                }
+                state->success = LittleFS.rename(CLOCK_FONT_TEMP_FILENAME, CLOCK_FONT_FILENAME);
+                if (state->success) {
+                    device_api.mark_settings_dirty();
+                } else {
+                    LittleFS.remove(CLOCK_FONT_TEMP_FILENAME);
+                    request->send(500, "application/json", "{\"error\":\"Could not finalize font file\"}");
+                }
+            }
+        });
+
+    server_.on(AsyncURIMatcher::exact("/api/v1/screensaver/font"), HTTP_GET, [this](AsyncWebServerRequest* request) {
+        if ((grind_controller_ && grind_controller_->is_active()) || ota_active_.load() ||
+            (bluetooth_manager_ && bluetooth_manager_->is_transfer_active())) {
+            request->send(409, "application/json", "{\"error\":\"Screensaver is busy\"}");
+            return;
+        }
+        if (!LittleFS.exists(CLOCK_FONT_FILENAME)) {
+            request->send(404, "application/json", "{\"error\":\"No custom clock font is stored\"}");
+            return;
+        }
+        AsyncWebServerResponse* response = request->beginResponse(
+            LittleFS, CLOCK_FONT_FILENAME, "font/ttf", false);
+        response->addHeader("Cache-Control", "private, no-store");
+        request->send(response);
+    });
+
+    server_.on(AsyncURIMatcher::exact("/api/v1/screensaver/font"), HTTP_DELETE, [this](AsyncWebServerRequest* request) {
+        if (!request_origin_allowed(request)) {
+            request->send(403, "application/json", "{\"error\":\"Request origin is not allowed\"}");
+            return;
+        }
+        if (ota_active_.load() || (grind_controller_ && grind_controller_->is_active()) ||
+            (bluetooth_manager_ && bluetooth_manager_->is_transfer_active())) {
+            request->send(409, "application/json", "{\"error\":\"Screensaver is busy\"}");
+            return;
+        }
+        if (LittleFS.exists(CLOCK_FONT_FILENAME)) {
+            LittleFS.remove(CLOCK_FONT_FILENAME);
+        }
+        if (LittleFS.exists(CLOCK_FONT_TEMP_FILENAME)) {
+            LittleFS.remove(CLOCK_FONT_TEMP_FILENAME);
+        }
+        Preferences prefs;
+        if (prefs.begin("screensaver", false)) {
+            if (prefs.getString("clock_font", "") == "custom") {
+                prefs.putString("clock_font", "montserrat");
+            }
+            prefs.end();
+        }
+        device_api.mark_settings_dirty();
+        request->send(200, "application/json", "{\"deleted\":true}");
     });
 
     server_.on(AsyncURIMatcher::exact("/api/v1/screensaver/test"), HTTP_POST, [this](AsyncWebServerRequest* request) {

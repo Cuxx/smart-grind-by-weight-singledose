@@ -103,6 +103,113 @@ uint32_t ScreensaverController::selected_clock_color() const {
     return static_cast<uint32_t>(val);
 }
 
+String ScreensaverController::selected_clock_font() const {
+    Preferences preferences;
+    if (!preferences.begin("screensaver", true)) return "montserrat";
+    const String font = preferences.getString("clock_font", "montserrat");
+    preferences.end();
+    if (font == "custom" && has_custom_clock_font()) {
+        return "custom";
+    }
+    return "montserrat";
+}
+
+bool ScreensaverController::has_custom_clock_font() const {
+    File font = LittleFS.open(CLOCK_FONT_FILENAME, "r");
+    const bool valid = font && font.size() >= 16 && font.size() <= CLOCK_FONT_MAX_SIZE;
+    if (font) {
+        font.close();
+    }
+    return valid;
+}
+
+bool ScreensaverController::load_custom_font(int32_t font_size) {
+    if (custom_clock_font_ && custom_clock_font_size_ == font_size) {
+        return true;
+    }
+    free_custom_font();
+
+    File f = LittleFS.open(CLOCK_FONT_FILENAME, "r");
+    if (!f) return false;
+    const size_t size = f.size();
+    if (size < 16 || size > CLOCK_FONT_MAX_SIZE) {
+        f.close();
+        return false;
+    }
+
+#if defined(SMART_GRIND_SIM)
+    clock_font_buffer_ = (uint8_t*)malloc(size);
+#else
+    clock_font_buffer_ = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!clock_font_buffer_) {
+        clock_font_buffer_ = (uint8_t*)malloc(size);
+    }
+#endif
+    if (!clock_font_buffer_) {
+        f.close();
+        LOG_BLE("Screensaver: Custom font allocation failed (%u bytes)\n", (unsigned)size);
+        return false;
+    }
+
+    size_t total_read = 0;
+    while (total_read < size) {
+        size_t bytes = f.read(clock_font_buffer_ + total_read, size - total_read);
+        if (bytes == 0) break;
+        total_read += bytes;
+    }
+    f.close();
+
+    if (total_read != size) {
+        LOG_BLE("Screensaver: Font file size mismatch (%u != %u)\n", (unsigned)total_read, (unsigned)size);
+        free_custom_font();
+        return false;
+    }
+    clock_font_size_ = size;
+
+#if LV_USE_TINY_TTF
+    custom_clock_font_ = lv_tiny_ttf_create_data(clock_font_buffer_, clock_font_size_, font_size);
+    if (!custom_clock_font_) {
+        LOG_BLE("Screensaver: lv_tiny_ttf_create_data failed for size %d\n", (int)font_size);
+        free_custom_font();
+        return false;
+    }
+    custom_clock_font_size_ = font_size;
+    return true;
+#else
+    free_custom_font();
+    return false;
+#endif
+}
+
+void ScreensaverController::free_custom_font() {
+#if LV_USE_TINY_TTF
+    if (custom_clock_font_) {
+        lv_tiny_ttf_destroy(custom_clock_font_);
+        custom_clock_font_ = nullptr;
+    }
+#endif
+    custom_clock_font_size_ = 0;
+    if (clock_font_buffer_) {
+#if !defined(SMART_GRIND_SIM)
+        heap_caps_free(clock_font_buffer_);
+#else
+        free(clock_font_buffer_);
+#endif
+        clock_font_buffer_ = nullptr;
+    }
+    clock_font_size_ = 0;
+}
+
+const lv_font_t* ScreensaverController::resolve_clock_font(const String& layout, const String& font_choice) {
+    const int32_t target_size = (layout == "stacked") ? 160 : 80;
+    if (font_choice == "custom") {
+        if (load_custom_font(target_size) && custom_clock_font_) {
+            return custom_clock_font_;
+        }
+    }
+    return (layout == "stacked") ? &lv_font_montserrat_160 : &lv_font_montserrat_80;
+}
+
 bool ScreensaverController::is_startup_enabled() const {
     return ScreensaverSettings::is_startup_enabled();
 }
@@ -200,6 +307,7 @@ void ScreensaverController::hide() {
     }
 
     free_image();
+    free_custom_font();
     visible_ = false;
 }
 
@@ -377,7 +485,8 @@ bool ScreensaverController::create_clock() {
     if (!minutes_label_) return false;
 
     const String layout = selected_clock_layout();
-    const lv_font_t* font = (layout == "stacked") ? &lv_font_montserrat_160 : &lv_font_montserrat_80;
+    clock_font_choice_ = selected_clock_font();
+    const lv_font_t* font = resolve_clock_font(layout, clock_font_choice_);
 
     clock_color_ = selected_clock_color();
     lv_obj_t* labels[] = {colon_label_, hours_label_, minutes_label_};
@@ -438,8 +547,10 @@ void ScreensaverController::update_clock() {
 
     const String layout = selected_clock_layout();
     const String pos = selected_clock_position();
+    const String font_choice = selected_clock_font();
 
-    const lv_font_t* font = (layout == "stacked") ? &lv_font_montserrat_160 : &lv_font_montserrat_80;
+    const lv_font_t* font = resolve_clock_font(layout, font_choice);
+    clock_font_choice_ = font_choice;
     if (lv_obj_get_style_text_font(hours_label_, LV_PART_MAIN) != font) {
         lv_obj_set_style_text_font(colon_label_, font, 0);
         lv_obj_set_style_text_font(hours_label_, font, 0);
