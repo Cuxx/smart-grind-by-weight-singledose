@@ -35,6 +35,8 @@ add_executable(smart-grind-sim
     "${PROJECT_ROOT}/src/ui/screens/grinding_screen_chart.cpp"
     "${PROJECT_ROOT}/src/font/lv_font_montserrat_56.c"
     "${PROJECT_ROOT}/src/font/lv_font_montserrat_60.c"
+    "${PROJECT_ROOT}/src/font/lv_font_montserrat_80.c"
+    "${PROJECT_ROOT}/src/font/lv_font_montserrat_160.c"
 )
 
 add_executable(net-weight-guard-test

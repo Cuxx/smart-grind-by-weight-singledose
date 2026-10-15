@@ -12,6 +12,9 @@ SmartGrindNetworkManager network_manager;
 void SmartGrindNetworkManager::init(Preferences* preferences) {
     preferences_ = preferences;
     if (!settings_mutex_) settings_mutex_ = xSemaphoreCreateMutex();
+    const String tz = timezone();
+    setenv("TZ", tz.c_str(), 1);
+    tzset();
     load_settings();
     initialized_.store(true);
 
@@ -261,11 +264,11 @@ void SmartGrindNetworkManager::handle_connected() {
         MDNS.addServiceTxt("smartgrind", "tcp", "version", BUILD_FIRMWARE_VERSION);
         MDNS.addServiceTxt("smartgrind", "tcp", "id", current_device_id.c_str());
     }
-    // UTC is rendered in the browser's local timezone. Synchronisation is
-    // asynchronous and does not delay the control or UI tasks.
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-    LOG_BLE("[WIFI] Connected: %s (%s.local, mDNS=%s)\n",
-            WiFi.localIP().toString().c_str(), current_hostname.c_str(), mdns_started_ ? "OK" : "FAILED");
+    const String tz = timezone();
+    configTzTime(tz.c_str(), "pool.ntp.org", "time.nist.gov");
+    LOG_BLE("[WIFI] Connected: %s (%s.local, mDNS=%s, TZ=%s)\n",
+            WiFi.localIP().toString().c_str(), current_hostname.c_str(),
+            mdns_started_ ? "OK" : "FAILED", tz.c_str());
 }
 
 void SmartGrindNetworkManager::stop_network() {
@@ -300,4 +303,30 @@ String SmartGrindNetworkManager::sanitize_hostname(const String& hostname) {
     while (sanitized.startsWith("-")) sanitized.remove(0, 1);
     while (sanitized.endsWith("-")) sanitized.remove(sanitized.length() - 1);
     return sanitized;
+}
+
+bool SmartGrindNetworkManager::is_time_synchronized() const {
+    time_t now = time(nullptr);
+    return now >= 1700000000;
+}
+
+void SmartGrindNetworkManager::configure_timezone(const String& tz) {
+    if (tz.isEmpty()) return;
+    Preferences prefs;
+    if (prefs.begin("ntp", false)) {
+        prefs.putString("tz", tz);
+        prefs.end();
+    }
+    setenv("TZ", tz.c_str(), 1);
+    tzset();
+}
+
+String SmartGrindNetworkManager::timezone() const {
+    Preferences prefs;
+    if (prefs.begin("ntp", true)) {
+        String tz = prefs.getString("tz", "CET-1CEST,M3.5.0,M10.5.0/3");
+        prefs.end();
+        if (!tz.isEmpty()) return tz;
+    }
+    return "CET-1CEST,M3.5.0,M10.5.0/3";
 }

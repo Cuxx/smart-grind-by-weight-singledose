@@ -4,6 +4,22 @@ This file records the user-visible changes in the community-maintained release
 line. Earlier release history remains available in the original project's
 [GitHub releases](https://github.com/jaapp/smart-grind-by-weight/releases).
 
+## [Unreleased]
+
+### Screensaver
+- Added large clock screensaver styles (`Clock (Black)` and `Clock (Custom)`).
+- Added selectable clock layouts:
+  - `Horizontal (HH:MM)` using an 80 px Montserrat-Bold font with stationary colon.
+  - `Stacked (HH / MM)` using a prominent 160 px Montserrat-Bold font centered for the AMOLED display.
+- Added configurable clock positioning (`Center`, `Top`, `Bottom`) and browser timezone auto-detection.
+- Added configurable clock colour selection with built-in presets (White, Amber, Warm Gold, Ice Cyan, Mint, Coral) and custom HEX picker with live browser preview.
+- Added **Test screensaver** button in the web interface to trigger screensaver preview directly on the grinder display with touch and scale wake support.
+- Integrated AMOLED burn-in protection via subtle 1–2 px subpixel shifting every minute.
+
+### UI & Navigation Fixes
+- Fixed start button erroneously showing gear icon after gesture swipe when a subset of grind tabs are disabled.
+- Fixed cold boot restoring settings screen instead of the last active grind screen.
+
 ## [1.6.2] - 2026-10-14
 
 ### Fixes & Improvements

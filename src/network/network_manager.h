@@ -42,6 +42,9 @@ public:
     String ip_address() const;
     int get_rssi() const;
     int8_t get_signal_level() const;
+    bool is_time_synchronized() const;
+    void configure_timezone(const String& tz);
+    String timezone() const;
 
 private:
     static constexpr uint32_t CONNECT_TIMEOUT_MS = 15000;

@@ -188,6 +188,21 @@ int main() {
     assert(rs.is_profile_enabled(1));
     assert(rs.is_profile_enabled(2));
 
+    // 7. Manual and Double only enabled (user configuration)
+    ok = rs.set_tab_config(true, false, true, false);
+    assert(ok);
+    assert(rs.total_tab_count_ == 4); // Manual (0), Double (1), WiFi (2), Menu (3)
+    assert(rs.is_manual_tab(0));
+    assert(rs.is_profile_tab(1));
+    assert(rs.profile_index_for_tab(1) == 1);
+    assert(rs.tab_for_profile_index(1) == 1); // Double must map to tab 1, NEVER Menu!
+    assert(!rs.is_menu_tab(1));
+    // Fallback for disabled profiles must resolve to active Double tab (1)
+    assert(rs.tab_for_profile_index(0) == 1);
+    assert(rs.tab_for_profile_index(2) == 1);
+    assert(rs.is_wifi_tab(2));
+    assert(rs.is_menu_tab(3));
+
     std::cout << "All configurable tabs tests passed!" << std::endl;
     return 0;
 }

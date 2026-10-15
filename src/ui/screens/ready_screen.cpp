@@ -59,6 +59,38 @@ void ReadyScreen::create() {
     visible = false;
 }
 
+void ReadyScreen::recalculate_indices() {
+    int next_index = 0;
+    if (tab_manual_enabled_) {
+        manual_tab_index_ = next_index++;
+    } else {
+        manual_tab_index_ = -1;
+    }
+
+    for (int i = 0; i < 3; ++i) {
+        if (profile_tab_enabled_[i]) {
+            profile_tab_indices_[i] = next_index++;
+        } else {
+            profile_tab_indices_[i] = -1;
+        }
+    }
+
+#ifdef SMART_GRIND_SIM
+    has_wifi_tab_ = true;
+#else
+    has_wifi_tab_ = network_manager.should_show_tab();
+#endif
+
+    if (has_wifi_tab_) {
+        wifi_tab_index_ = next_index++;
+    } else {
+        wifi_tab_index_ = -1;
+    }
+
+    menu_tab_index_ = next_index++;
+    total_tab_count_ = next_index;
+}
+
 void ReadyScreen::set_tab_config(bool manual, bool single, bool double_dose, bool custom) {
     if (!manual && !single && !double_dose && !custom) {
         manual = true;
@@ -70,6 +102,7 @@ void ReadyScreen::set_tab_config(bool manual, bool single, bool double_dose, boo
     profile_tab_enabled_[0] = single;
     profile_tab_enabled_[1] = double_dose;
     profile_tab_enabled_[2] = custom;
+    recalculate_indices();
 }
 
 #ifndef SMART_GRIND_SIM
@@ -106,6 +139,8 @@ void ReadyScreen::build_tabs() {
         wifi_qr_payload.clear();
     }
 
+    recalculate_indices();
+
     tabview = lv_tabview_create(screen);
     lv_obj_set_size(tabview, LV_PCT(100), LV_PCT(100));
     lv_obj_align(tabview, LV_ALIGN_CENTER, 0, 0);
@@ -120,44 +155,29 @@ void ReadyScreen::build_tabs() {
 
     lv_obj_set_style_bg_opa(tabview, LV_OPA_TRANSP, 0);
 
-    int next_index = 0;
-    if (tab_manual_enabled_) {
-        manual_tab_index_ = next_index++;
+    if (manual_tab_index_ >= 0) {
         manual_tab = lv_tabview_add_tab(tabview, "Manual");
     } else {
-        manual_tab_index_ = -1;
         manual_tab = nullptr;
     }
 
     const char* tab_names[3] = {"Single", "Double", "Custom"};
     const char* profile_names[3] = {"SINGLE", "DOUBLE", "CUSTOM"};
     for (int i = 0; i < 3; ++i) {
-        if (profile_tab_enabled_[i]) {
-            profile_tab_indices_[i] = next_index++;
+        if (profile_tab_indices_[i] >= 0) {
             profile_tabs[i] = lv_tabview_add_tab(tabview, tab_names[i]);
         } else {
-            profile_tab_indices_[i] = -1;
             profile_tabs[i] = nullptr;
         }
     }
 
-#ifdef SMART_GRIND_SIM
-    has_wifi_tab_ = true;
-#else
-    has_wifi_tab_ = network_manager.should_show_tab();
-#endif
-
-    if (has_wifi_tab_) {
-        wifi_tab_index_ = next_index++;
+    if (wifi_tab_index_ >= 0) {
         wifi_tab = lv_tabview_add_tab(tabview, "WI-FI");
     } else {
-        wifi_tab_index_ = -1;
         wifi_tab = nullptr;
     }
 
-    menu_tab_index_ = next_index++;
     menu_tab = lv_tabview_add_tab(tabview, "MENU");
-    total_tab_count_ = next_index;
 
     if (manual_tab) {
         create_manual_page(manual_tab);
