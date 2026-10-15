@@ -4,6 +4,18 @@ This file records the user-visible changes in the community-maintained release
 line. Earlier release history remains available in the original project's
 [GitHub releases](https://github.com/jaapp/smart-grind-by-weight/releases).
 
+## [Unreleased]
+
+### Screensaver & Typography
+- Added custom clock font upload support (`.ttf` and `.otf`) via the web interface.
+- Integrated LVGL TinyTTF runtime vector font rasterization:
+  - Dynamically rasterizes uploaded vector fonts into PSRAM for both horizontal (80 px) and stacked (160 px) clock layouts.
+  - Graceful fallback to built-in Montserrat-Bold font if no custom font is uploaded or if font parsing fails.
+- Added strict safety boundaries:
+  - 512 KB maximum font size enforced both client-side and server-side to prevent heap exhaustion or LittleFS flash saturation.
+  - Magic byte header validation (`0x00010000`, `OTTO`, `true`, `typ1`) to reject invalid files before writing to flash.
+- Added browser-side live font preview using the `FontFace` API when choosing a font.
+
 ## [1.6.3] - 2026-10-15
 
 ### Screensaver

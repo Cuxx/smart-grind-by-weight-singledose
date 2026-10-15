@@ -56,8 +56,19 @@ private:
     String selected_clock_position() const;
     String selected_clock_layout() const;
     uint32_t selected_clock_color() const;
+    String selected_clock_font() const;
     uint32_t clock_color_ = 0xFFFFFF;
+    String clock_font_choice_ = "montserrat";
+    uint8_t* clock_font_buffer_ = nullptr;
+    size_t clock_font_size_ = 0;
+    lv_font_t* custom_clock_font_ = nullptr;
+    int32_t custom_clock_font_size_ = 0;
+
     bool has_custom_image() const;
+    bool has_custom_clock_font() const;
+    bool load_custom_font(int32_t font_size);
+    void free_custom_font();
+    const lv_font_t* resolve_clock_font(const String& layout, const String& font_choice);
     bool create_builtin(const String& style);
     bool create_clock();
     void update_builtin();
