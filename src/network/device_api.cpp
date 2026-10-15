@@ -607,6 +607,10 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
         const String clock_lay = value("clock_layout");
         strncpy(settings.clock_layout, clock_lay.c_str(), sizeof(settings.clock_layout) - 1);
     }
+    if (request->hasParam("clock_color", true)) {
+        const String clock_col = value("clock_color");
+        strncpy(settings.clock_color, clock_col.c_str(), sizeof(settings.clock_color) - 1);
+    }
     if (request->hasParam("timezone", true)) {
         const String tz = value("timezone");
         strncpy(settings.timezone, tz.c_str(), sizeof(settings.timezone) - 1);
@@ -821,7 +825,8 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
         const bool style_saved = screensaver.putString("style", settings.screensaver_style) == strlen(settings.screensaver_style);
         const bool pos_saved = screensaver.putString("clock_pos", settings.clock_position) == strlen(settings.clock_position);
         const bool layout_saved = screensaver.putString("clock_layout", settings.clock_layout) == strlen(settings.clock_layout);
-        saved = style_saved && pos_saved && layout_saved && saved;
+        const bool color_saved = screensaver.putString("clock_color", settings.clock_color) == strlen(settings.clock_color);
+        saved = style_saved && pos_saved && layout_saved && color_saved && saved;
         const String stored_style = screensaver.getString("style", "");
         screensaver.end();
         const bool style_read = stored_style == "minimal" || stored_style == "orbit" ||
@@ -884,10 +889,12 @@ void DeviceApi::refresh_settings_cache() {
     String screensaver_style = LittleFS.exists(BLE_IMAGE_FILENAME) ? "custom" : "minimal";
     String clock_position = "center";
     String clock_layout = "horizontal";
+    String clock_color = "#FFFFFF";
     if (screensaver_preferences.begin("screensaver", true)) {
         screensaver_style = screensaver_preferences.getString("style", screensaver_style);
         clock_position = screensaver_preferences.getString("clock_pos", "center");
         clock_layout = screensaver_preferences.getString("clock_layout", "horizontal");
+        clock_color = screensaver_preferences.getString("clock_color", "#FFFFFF");
         screensaver_preferences.end();
     }
     const String timezone = network_manager.timezone();
@@ -914,7 +921,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"screensaver_startup\":%s,\"screensaver_sleep\":%s,"
              "\"screensaver_idle_timeout_s\":%u,\"screensaver_startup_timeout_s\":%u,"
              "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,"
-             "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"timezone\":\"%s\","
+             "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"timezone\":\"%s\","
              "\"has_custom_screensaver\":%s,"
              "\"gaggimate_host\":\"%s\"},"
              "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,"
@@ -940,7 +947,7 @@ void DeviceApi::refresh_settings_cache() {
              screensaver_timing.idle_timeout_s, screensaver_timing.startup_timeout_s,
              screensaver_timing.display_off_enabled ? "true" : "false",
              screensaver_timing.display_off_delay_s,
-             screensaver_style.c_str(), clock_position.c_str(), clock_layout.c_str(), timezone.c_str(),
+             screensaver_style.c_str(), clock_position.c_str(), clock_layout.c_str(), clock_color.c_str(), timezone.c_str(),
              LittleFS.exists(BLE_IMAGE_FILENAME) ? "true" : "false",
              gaggimate_host.c_str(),
              network_manager.is_tab_enabled() ? "true" : "false",

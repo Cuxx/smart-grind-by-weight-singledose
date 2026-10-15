@@ -176,6 +176,11 @@ void UIManager::update() {
         }
         device_api.complete_settings_application(runtime_applied);
     }
+    if (device_api.take_screensaver_preview_request()) {
+        if (screen_timeout_controller_) {
+            screen_timeout_controller_->trigger_preview();
+        }
+    }
 #endif
 
     // Update diagnostics controller

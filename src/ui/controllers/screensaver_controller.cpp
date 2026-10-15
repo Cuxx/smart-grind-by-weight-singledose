@@ -88,6 +88,21 @@ String ScreensaverController::selected_clock_layout() const {
     return "horizontal";
 }
 
+uint32_t ScreensaverController::selected_clock_color() const {
+    Preferences preferences;
+    if (!preferences.begin("screensaver", true)) return 0xFFFFFF;
+    String hex = preferences.getString("clock_color", "#FFFFFF");
+    preferences.end();
+    if (hex.startsWith("#")) {
+        hex = hex.substring(1);
+    }
+    if (hex.length() != 6) return 0xFFFFFF;
+    char* endptr = nullptr;
+    unsigned long val = strtoul(hex.c_str(), &endptr, 16);
+    if (!endptr || *endptr != '\0') return 0xFFFFFF;
+    return static_cast<uint32_t>(val);
+}
+
 bool ScreensaverController::is_startup_enabled() const {
     return ScreensaverSettings::is_startup_enabled();
 }
@@ -364,10 +379,11 @@ bool ScreensaverController::create_clock() {
     const String layout = selected_clock_layout();
     const lv_font_t* font = (layout == "stacked") ? &lv_font_montserrat_160 : &lv_font_montserrat_80;
 
+    clock_color_ = selected_clock_color();
     lv_obj_t* labels[] = {colon_label_, hours_label_, minutes_label_};
     for (lv_obj_t* lbl : labels) {
         lv_obj_set_style_text_font(lbl, font, 0);
-        lv_obj_set_style_text_color(lbl, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
+        lv_obj_set_style_text_color(lbl, lv_color_hex(clock_color_), 0);
     }
 
     if (layout == "stacked") {
@@ -437,6 +453,15 @@ void ScreensaverController::update_clock() {
             lv_obj_set_style_text_align(minutes_label_, LV_TEXT_ALIGN_LEFT, 0);
             lv_label_set_text(colon_label_, ":");
         }
+    }
+
+    const uint32_t new_color = selected_clock_color();
+    if (new_color != clock_color_) {
+        clock_color_ = new_color;
+        const lv_color_t color = lv_color_hex(clock_color_);
+        lv_obj_set_style_text_color(colon_label_, color, 0);
+        lv_obj_set_style_text_color(hours_label_, color, 0);
+        lv_obj_set_style_text_color(minutes_label_, color, 0);
     }
 
     // Subtle burn-in shift based on current minute (orbit pattern ±2 px)

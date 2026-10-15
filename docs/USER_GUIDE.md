@@ -217,6 +217,8 @@ grinder.
   - **Clock (Custom)**: Overlays the large clock on your uploaded custom image. When unsynchronized, it displays the image cleanly without the time.
   - **Clock Layout**: Choose between `Horizontal (HH:MM)` using an 80 px Montserrat Bold font with a stationary colon, or `Stacked (HH / MM)` using a prominent 160 px Montserrat Bold font.
   - **Clock Position**: Choose between `Center`, `Top`, or `Bottom`.
+  - **Clock Colour**: Choose any custom HEX colour or select from AMOLED-tailored presets (White, Amber, Warm Gold, Ice Cyan, Mint, Coral) with zero rendering overhead.
+  - **Test screensaver**: Tap **Test screensaver** in the web interface to instantly activate the screensaver on the physical display. Touching the panel or changing weight on the scale restores normal operation.
   - **Timezone**: Set your local POSIX TZ string (default `CET-1CEST,M3.5.0,M10.5.0/3`) or tap `Auto` to detect it from your browser.
   - **Burn-in protection**: Periodically applies subtle 1–2 px subpixel shifting every minute to protect the AMOLED screen.
 - **GaggiMate status**: Enter the machine hostname (normally

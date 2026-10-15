@@ -42,6 +42,7 @@ struct DeviceSettingsUpdate {
     char screensaver_style[16] = "minimal";
     char clock_position[8] = "center";
     char clock_layout[16] = "horizontal";
+    char clock_color[16] = "#FFFFFF";
     char timezone[36] = "CET-1CEST,M3.5.0,M10.5.0/3";
     char gaggimate_host[64] = "gaggimate.local";
     bool bluetooth_startup = true;
@@ -72,6 +73,8 @@ public:
     void complete_settings_application(bool runtime_applied);
     String settings_json();
     void mark_settings_dirty() { settings_cache_dirty_.store(true); }
+    bool take_screensaver_preview_request() { return screensaver_preview_requested_.exchange(false); }
+    void request_screensaver_preview() { screensaver_preview_requested_.store(true); }
 
 private:
     enum class CommandAction : uint8_t {
@@ -121,6 +124,7 @@ private:
     uint32_t last_publish_ms_ = 0;
     std::atomic<uint32_t> sequence_{0};
     std::atomic<bool> settings_cache_dirty_{false};
+    std::atomic<bool> screensaver_preview_requested_{false};
     bool initialized_ = false;
 
     void handle_event(AsyncWebSocket* server, AsyncWebSocketClient* client,
