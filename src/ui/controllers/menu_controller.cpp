@@ -13,6 +13,7 @@
 #include "../../controllers/grind_mode_traits.h"
 #include "../../logging/grind_logging.h"
 #include "../../network/network_manager.h"
+#include "../../network/device_api.h"
 #include "../../system/diagnostics_controller.h"
 #include "../../system/screensaver_settings.h"
 #include "../../system/statistics_manager.h"
@@ -51,6 +52,7 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::WIFI_TOGGLE, [this](lv_event_t*) { handle_wifi_toggle(); });
     EventBridgeLVGL::register_handler(ET::WIFI_TAB_TOGGLE, [this](lv_event_t*) { handle_wifi_tab_toggle(); });
     EventBridgeLVGL::register_handler(ET::WIFI_ICON_TOGGLE, [this](lv_event_t*) { handle_wifi_icon_toggle(); });
+    EventBridgeLVGL::register_handler(ET::WIFI_POWER_TOGGLE, [this](lv_event_t*) { handle_wifi_power_toggle(); });
     EventBridgeLVGL::register_handler(ET::LOGGING_TOGGLE, [this](lv_event_t*) { handle_logging_toggle(); });
 
     EventBridgeLVGL::register_handler(ET::GRIND_TAB_MANUAL_TOGGLE, [this](lv_event_t*) { handle_grind_tab_manual_toggle(); });
@@ -378,6 +380,19 @@ void MenuUIController::handle_wifi_icon_toggle() {
     if (ui_manager_->status_indicator_controller_) {
         ui_manager_->status_indicator_controller_->update_wifi_status_icon();
     }
+}
+
+void MenuUIController::handle_wifi_power_toggle() {
+    if (!ui_manager_) return;
+
+    auto* toggle = ui_manager_->menu_screen.get_wifi_power_toggle();
+    if (!toggle) return;
+
+    bool power_enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    network_manager.set_performance_mode(power_enabled);
+    device_api.mark_settings_dirty();
+    LOG_DEBUG_PRINTLN(power_enabled ? "Wi-Fi High-Power mode enabled" : "Wi-Fi High-Power mode disabled");
+    ui_manager_->menu_screen.update_network_status();
 }
 
 void MenuUIController::handle_logging_toggle() {

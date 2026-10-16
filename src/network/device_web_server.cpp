@@ -455,7 +455,7 @@ void DeviceWebServer::configure_routes() {
             "\"capabilities\":{\"protocol\":1,\"transport\":\"websocket\",\"path\":\"/ws\",\"state_interval_ms\":100,"
             "\"commands\":[\"start\",\"start_manual\",\"stop\",\"dismiss\",\"tare\",\"select_profile\",\"set_mode\"]},"
             "\"firmware\":{\"version\":\"%s\",\"build\":%d,\"commit\":\"%s\",\"repository\":\"%s\"},"
-            "\"network\":{\"state\":\"%s\",\"hostname\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\"},"
+            "\"network\":{\"state\":\"%s\",\"hostname\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d},"
             "\"system\":{\"uptime_ms\":%lu,\"free_heap\":%u,\"free_internal_heap\":%u,"
             "\"largest_internal_block\":%u,\"free_psram\":%u},"
             "\"ota\":{\"active\":%s,\"preparing\":%s,\"ready\":%s,\"progress\":%u,\"failed\":%s}}",
@@ -469,6 +469,7 @@ void DeviceWebServer::configure_routes() {
             hostname.c_str(),
             network_name.c_str(),
             ip_address.c_str(),
+            network_manager.get_rssi(),
             static_cast<unsigned long>(millis()),
             static_cast<unsigned int>(ESP.getFreeHeap()),
             static_cast<unsigned int>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),

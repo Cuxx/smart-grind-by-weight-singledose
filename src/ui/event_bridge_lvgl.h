@@ -36,6 +36,7 @@ public:
         WIFI_TOGGLE,
         WIFI_TAB_TOGGLE,
         WIFI_ICON_TOGGLE,
+        WIFI_POWER_TOGGLE,
         LOGGING_TOGGLE,
         GRIND_MODE_SWIPE_TOGGLE,
         GRIND_MODE_RADIO_BUTTON,

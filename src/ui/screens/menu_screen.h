@@ -32,6 +32,7 @@ private:
     lv_obj_t* sessions_label;
     lv_obj_t* events_label;
     lv_obj_t* measurements_label;
+    lv_obj_t* signal_label;
     lv_obj_t* refresh_stats_button;
 
     // Lifetime statistics labels
@@ -53,6 +54,7 @@ private:
     lv_obj_t* wifi_toggle;
     lv_obj_t* wifi_tab_toggle;
     lv_obj_t* wifi_icon_toggle;
+    lv_obj_t* wifi_power_toggle;
     lv_obj_t* network_status_label;
     lv_obj_t* network_detail_label;
     lv_obj_t* network_qr;
@@ -169,6 +171,7 @@ public:
     lv_obj_t* get_wifi_toggle() const { return wifi_toggle; }
     lv_obj_t* get_wifi_tab_toggle() const { return wifi_tab_toggle; }
     lv_obj_t* get_wifi_icon_toggle() const { return wifi_icon_toggle; }
+    lv_obj_t* get_wifi_power_toggle() const { return wifi_power_toggle; }
     lv_obj_t* get_logging_toggle() const { return logging_toggle; }
     lv_obj_t* get_refresh_stats_button() const { return refresh_stats_button; }
     lv_obj_t* get_network_update_button() const { return network_update_button; }

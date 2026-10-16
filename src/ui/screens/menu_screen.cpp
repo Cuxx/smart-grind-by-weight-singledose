@@ -286,6 +286,7 @@ void MenuScreen::create_info_page(lv_obj_t* parent) {
    
     create_data_label(parent, "Uptime:", &uptime_label);
     create_data_label(parent, "RAM:", &memory_label);
+    create_data_label(parent, "Signal:", &signal_label);
 }
 
 
@@ -355,6 +356,7 @@ void MenuScreen::create_network_page(lv_obj_t* parent) {
     create_toggle_row(parent, "Enabled", &wifi_toggle);
     create_toggle_row(parent, "WiFi Tab", &wifi_tab_toggle);
     create_toggle_row(parent, "Hide Icon", &wifi_icon_toggle);
+    create_toggle_row(parent, "High-Power", &wifi_power_toggle);
 
     using ET = EventBridgeLVGL::EventType;
     if (wifi_toggle) {
@@ -368,6 +370,10 @@ void MenuScreen::create_network_page(lv_obj_t* parent) {
     if (wifi_icon_toggle) {
         lv_obj_add_event_cb(wifi_icon_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::WIFI_ICON_TOGGLE)));
+    }
+    if (wifi_power_toggle) {
+        lv_obj_add_event_cb(wifi_power_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::WIFI_POWER_TOGGLE)));
     }
 
     network_status_label = lv_label_create(parent);
@@ -430,6 +436,13 @@ void MenuScreen::update_network_status() {
             lv_obj_clear_state(wifi_icon_toggle, LV_STATE_CHECKED);
         }
     }
+    if (wifi_power_toggle) {
+        if (network_manager.is_performance_mode()) {
+            lv_obj_add_state(wifi_power_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(wifi_power_toggle, LV_STATE_CHECKED);
+        }
+    }
 
     if (!network_status_label || !network_detail_label || !network_qr ||
         !network_update_label || !network_update_button) return;
@@ -457,7 +470,7 @@ void MenuScreen::update_network_status() {
                 detail = String(device_web_server.ota_progress_percent()) + "% received\nDo not remove power.";
             } else {
                 status = "Connected";
-                detail = network_manager.network_name() + "\nhttp://" + network_manager.hostname() + ".local\n" + network_manager.ip_address();
+                detail = network_manager.network_name() + " (" + String(network_manager.get_rssi()) + " dBm)\nhttp://" + network_manager.hostname() + ".local\n" + network_manager.ip_address();
             }
             break;
         case NetworkState::WIFI_RETRY_WAIT:
@@ -1004,6 +1017,19 @@ void MenuScreen::update_info(const WeightSensor* weight_sensor, unsigned long up
     lv_label_set_text(uptime_label, uptime_text);
 
     set_label_text_int(memory_label, free_heap / 1024, "kB");
+
+    if (signal_label) {
+        if (network_manager.is_connected()) {
+            char sig_text[32];
+            const int rssi = network_manager.get_rssi();
+            snprintf(sig_text, sizeof(sig_text), "%d dBm", rssi);
+            lv_label_set_text(signal_label, sig_text);
+        } else if (!network_manager.is_enabled()) {
+            lv_label_set_text(signal_label, "Disabled");
+        } else {
+            lv_label_set_text(signal_label, "Disconnected");
+        }
+    }
 }
 
 void MenuScreen::update_diagnostics(WeightSensor* weight_sensor) {
