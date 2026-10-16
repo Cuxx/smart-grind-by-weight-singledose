@@ -52,6 +52,7 @@ public:
     void handle_grind_tab_single_toggle();
     void handle_grind_tab_double_toggle();
     void handle_grind_tab_custom_toggle();
+    void handle_mode_icons_toggle();
     void handle_brightness_normal_slider();
     void handle_brightness_normal_slider_released();
     void handle_brightness_screensaver_slider();

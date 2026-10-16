@@ -113,6 +113,7 @@ void ReadyScreen::load_tab_config(Preferences* prefs) {
     const bool double_dose = prefs->getBool("tab_double", true);
     const bool custom = prefs->getBool("tab_custom", true);
     set_tab_config(manual, single, double_dose, custom);
+    show_mode_icons_ = prefs->getBool("mode_icons", true);
 }
 #endif
 
@@ -125,12 +126,16 @@ void ReadyScreen::build_tabs() {
         wifi_detail_label = nullptr;
         wifi_qr = nullptr;
         manual_tab = nullptr;
+        manual_title_label = nullptr;
+        manual_icon = nullptr;
         manual_weight_label = nullptr;
         manual_scale_status_label = nullptr;
         manual_tare_button = nullptr;
         manual_safety_label = nullptr;
         for (int i = 0; i < 3; ++i) {
             profile_tabs[i] = nullptr;
+            profile_name_labels[i] = nullptr;
+            profile_icons[i] = nullptr;
             weight_labels[i] = nullptr;
         }
         menu_tab = nullptr;
@@ -224,11 +229,24 @@ void ReadyScreen::create_manual_page(lv_obj_t* parent) {
     lv_obj_set_style_pad_gap(parent, 4, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t* title_label = lv_label_create(parent);
-    lv_label_set_text(title_label, "SINGLE DOSE");
-    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(title_label, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
-    lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0);
+    manual_icon = lv_image_create(parent);
+    lv_image_set_src(manual_icon, &icon_mode_scale);
+    lv_obj_set_style_image_recolor(manual_icon, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
+    lv_obj_set_style_image_recolor_opa(manual_icon, LV_OPA_COVER, 0);
+
+    manual_title_label = lv_label_create(parent);
+    lv_label_set_text(manual_title_label, "SINGLE DOSE");
+    lv_obj_set_style_text_font(manual_title_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(manual_title_label, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
+    lv_obj_set_style_text_align(manual_title_label, LV_TEXT_ALIGN_CENTER, 0);
+
+    if (show_mode_icons_) {
+        lv_obj_add_flag(manual_title_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(manual_icon, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(manual_title_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(manual_icon, LV_OBJ_FLAG_HIDDEN);
+    }
 
     manual_weight_label = lv_label_create(parent);
     lv_label_set_text(manual_weight_label, "---");
@@ -384,10 +402,27 @@ void ReadyScreen::create_profile_page(lv_obj_t* parent, int profile_index, const
     lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_gap(parent, 0, 0);
 
-    lv_obj_t* name_label;
-    (void)create_profile_label(parent, &name_label, &weight_labels[profile_index]);
-    lv_label_set_text(name_label, profile_name);
-    lv_obj_add_flag(name_label, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_t* label_container = create_profile_label(parent, &profile_name_labels[profile_index], &weight_labels[profile_index]);
+    lv_label_set_text(profile_name_labels[profile_index], profile_name);
+    lv_obj_add_flag(profile_name_labels[profile_index], LV_OBJ_FLAG_CLICKABLE);
+
+    const lv_image_dsc_t* icon_dsc = (profile_index == 0) ? &icon_mode_single :
+                                     (profile_index == 1) ? &icon_mode_double :
+                                                            &icon_mode_custom;
+    profile_icons[profile_index] = lv_image_create(label_container);
+    lv_image_set_src(profile_icons[profile_index], icon_dsc);
+    lv_obj_set_style_image_recolor(profile_icons[profile_index], lv_color_hex(THEME_COLOR_SECONDARY), 0);
+    lv_obj_set_style_image_recolor_opa(profile_icons[profile_index], LV_OPA_COVER, 0);
+    lv_obj_add_flag(profile_icons[profile_index], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_move_to_index(profile_icons[profile_index], 0);
+
+    if (show_mode_icons_) {
+        lv_obj_add_flag(profile_name_labels[profile_index], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(profile_icons[profile_index], LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(profile_name_labels[profile_index], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(profile_icons[profile_index], LV_OBJ_FLAG_HIDDEN);
+    }
     
     char weight_text[16];
     snprintf(weight_text, sizeof(weight_text), SYS_WEIGHT_DISPLAY_FORMAT, weight);
@@ -460,6 +495,12 @@ void ReadyScreen::set_profile_long_press_handler(lv_event_cb_t handler) {
         if (weight_labels[i]) {
             lv_obj_add_event_cb(weight_labels[i], handler, LV_EVENT_LONG_PRESSED, NULL);
         }
+        if (profile_icons[i]) {
+            lv_obj_add_event_cb(profile_icons[i], handler, LV_EVENT_LONG_PRESSED, NULL);
+        }
+        if (profile_name_labels[i]) {
+            lv_obj_add_event_cb(profile_name_labels[i], handler, LV_EVENT_LONG_PRESSED, NULL);
+        }
     }
 }
 
@@ -469,5 +510,29 @@ void ReadyScreen::set_manual_tare_handler(lv_event_cb_t handler) {
         lv_obj_add_event_cb(manual_tare_button, handler, LV_EVENT_CLICKED,
                             reinterpret_cast<void*>(static_cast<intptr_t>(
                                 EventBridgeLVGL::EventType::MANUAL_TARE)));
+    }
+}
+
+void ReadyScreen::set_show_mode_icons(bool enabled) {
+    show_mode_icons_ = enabled;
+    for (int i = 0; i < 3; ++i) {
+        if (profile_icons[i] && profile_name_labels[i]) {
+            if (enabled) {
+                lv_obj_clear_flag(profile_icons[i], LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(profile_name_labels[i], LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(profile_icons[i], LV_OBJ_FLAG_HIDDEN);
+                lv_obj_clear_flag(profile_name_labels[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+    }
+    if (manual_icon && manual_title_label) {
+        if (enabled) {
+            lv_obj_clear_flag(manual_icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(manual_title_label, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(manual_icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(manual_title_label, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 }

@@ -73,6 +73,7 @@ private:
     lv_obj_t* screensaver_startup_toggle;
     lv_obj_t* screensaver_sleep_toggle;
     lv_obj_t* display_off_toggle;
+    lv_obj_t* mode_icons_toggle;
     lv_obj_t* purge_button;
     lv_obj_t* reset_button;
     
@@ -199,6 +200,7 @@ public:
     lv_obj_t* get_screensaver_startup_toggle() const { return screensaver_startup_toggle; }
     lv_obj_t* get_screensaver_sleep_toggle() const { return screensaver_sleep_toggle; }
     lv_obj_t* get_display_off_toggle() const { return display_off_toggle; }
+    lv_obj_t* get_mode_icons_toggle() const { return mode_icons_toggle; }
     void update_screensaver_toggles();
 
 private:

@@ -63,6 +63,8 @@ struct DeviceSettingsUpdate {
     bool tab_double = true;
     bool has_tab_custom = false;
     bool tab_custom = true;
+    bool has_mode_icons = false;
+    bool mode_icons = true;
 };
 
 class DeviceApi {
