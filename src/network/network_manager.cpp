@@ -101,6 +101,7 @@ bool SmartGrindNetworkManager::set_performance_mode(bool enabled) {
 }
 
 void SmartGrindNetworkManager::apply_power_settings() {
+    if (!enabled_.load() || state_.load() == NetworkState::WIFI_DISABLED) return;
     const bool perf = performance_mode_.load();
     WiFi.setSleep(!perf);
     WiFi.setTxPower(perf ? WIFI_POWER_19_5dBm : WIFI_POWER_15dBm);
@@ -210,7 +211,7 @@ void SmartGrindNetworkManager::load_settings() {
     enabled_.store(preferences_ && preferences_->getBool("wifi_on", true));
     tab_enabled_.store(preferences_ ? preferences_->getBool("wifi_tab", true) : true);
     icon_menu_only_.store(preferences_ ? preferences_->getBool("wifi_icon_menu", false) : false);
-    performance_mode_.store(preferences_ ? preferences_->getBool("wifi_perf", true) : true);
+    performance_mode_.store(preferences_ ? preferences_->getBool("wifi_perf", false) : false);
     ssid_ = preferences_ ? preferences_->getString("wifi_ssid", "") : String();
     password_ = preferences_ ? preferences_->getString("wifi_pass", "") : String();
     hostname_ = preferences_ ? sanitize_hostname(preferences_->getString("wifi_host", "")) : String();

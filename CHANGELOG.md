@@ -7,8 +7,8 @@ line. Earlier release history remains available in the original project's
 ## [Unreleased]
 
 ### Wi-Fi Connectivity & Signal
-- **Wi-Fi High Performance Mode**: Added user-controllable toggle under **Settings → Connectivity → Wi-Fi** (stored in NVS as `wifi_perf`). When enabled (default for mains-powered grinder), modem sleep is disabled and TX power is set to 19.5 dBm for maximum throughput, instant responsiveness and link stability through metal grinder chassis. When disabled, power saving mode (15 dBm with modem sleep) is active.
-- **Real-Time Signal Display**: Added live RSSI signal indicator in dBm along with signal quality rating (`Excellent`, `Good`, `Fair`, `Weak`) under **Settings → Connectivity → Wi-Fi**.
+- **Wi-Fi High-Power Mode**: Added user-controllable toggle directly on the touchscreen under **Menu → Wi-Fi** and in the web interface under **Settings → Connectivity → Wi-Fi** (persisted in NVS as `wifi_perf`, default disabled / power-saving mode). When enabled, modem sleep is disabled and TX power is increased to 19.5 dBm for maximum throughput, low latency and robust uplink through metal grinder enclosures.
+- **Real-Time Signal Display**: Added live RSSI signal indicator in dBm on the touchscreen under **Menu → Info → System Info** (and in the Wi-Fi status view) as well as under **Settings → Connectivity → Wi-Fi** in the web interface.
 - **Realistic RSSI Icon Thresholds**: Re-calibrated 4-tier signal mapping on the AMOLED screen (4 bars: ≥ -67 dBm, 3 bars: -68 to -75 dBm, 2 bars: -76 to -83 dBm, 1 bar: < -83 dBm), accurately reflecting solid signal levels rather than prematurely dropping to weak indication.
 
 ## [1.6.4] - 2026-10-15

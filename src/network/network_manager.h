@@ -59,7 +59,7 @@ private:
     std::atomic<bool> enabled_{false};
     std::atomic<bool> tab_enabled_{true};
     std::atomic<bool> icon_menu_only_{false};
-    std::atomic<bool> performance_mode_{true};
+    std::atomic<bool> performance_mode_{false};
     bool ever_connected_ = false;
     bool mdns_started_ = false;
     uint32_t state_changed_at_ms_ = 0;

@@ -52,7 +52,7 @@ struct DeviceSettingsUpdate {
     bool has_wifi_icon_menu = false;
     bool wifi_icon_menu = false;
     bool has_wifi_performance_mode = false;
-    bool wifi_performance_mode = true;
+    bool wifi_performance_mode = false;
     bool has_bluetooth_icon_menu = false;
     bool bluetooth_icon_menu = false;
     bool has_tab_manual = false;

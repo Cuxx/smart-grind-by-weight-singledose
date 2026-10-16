@@ -204,8 +204,8 @@ Smart Grind includes an integrated web interface accessible over Wi-Fi (`http://
   - 3 bars (Good): -68 to -75 dBm
   - 2 bars (Fair): -76 to -83 dBm
   - 1 bar (Weak): < -83 dBm
-- **Live signal in Web UI**: The exact real-time RSSI (in dBm along with a qualitative rating) is shown under **Settings → Connectivity → Wi-Fi**.
-- **Wi-Fi High Performance Mode**: Configurable under **Settings → Connectivity**. Enabled by default (mains-powered appliance), it sets transmission power to 19.5 dBm and disables modem sleep for optimal throughput, instant responsiveness and connection stability. When switched off, power-saving mode (15 dBm with modem sleep) is active.
+- **Live signal in UI**: Real-time RSSI is displayed in dBm on the grinder touchscreen under **Menu → Info → System Info** (and in the Wi-Fi connection summary) as well as under **Settings → Connectivity → Wi-Fi** in the web interface.
+- **Wi-Fi High-Power Mode**: Configurable directly on the touchscreen under **Menu → Wi-Fi** or in the web interface under **Settings → Connectivity**. Disabled by default (15 dBm power-saving mode with modem sleep). When enabled, modem sleep is deactivated and transmit power is set to 19.5 dBm for maximum throughput, responsiveness and link stability through metal enclosures.
 
 ---
 
