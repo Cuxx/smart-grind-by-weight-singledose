@@ -233,6 +233,7 @@ void ReadyScreen::create_manual_page(lv_obj_t* parent) {
     lv_image_set_src(manual_icon, &icon_mode_scale);
     lv_obj_set_style_image_recolor(manual_icon, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
     lv_obj_set_style_image_recolor_opa(manual_icon, LV_OPA_COVER, 0);
+    lv_obj_set_style_margin_bottom(manual_icon, 4, 0);
 
     manual_title_label = lv_label_create(parent);
     lv_label_set_text(manual_title_label, "SINGLE DOSE");
@@ -413,6 +414,7 @@ void ReadyScreen::create_profile_page(lv_obj_t* parent, int profile_index, const
     lv_image_set_src(profile_icons[profile_index], icon_dsc);
     lv_obj_set_style_image_recolor(profile_icons[profile_index], lv_color_hex(THEME_COLOR_SECONDARY), 0);
     lv_obj_set_style_image_recolor_opa(profile_icons[profile_index], LV_OPA_COVER, 0);
+    lv_obj_set_style_margin_bottom(profile_icons[profile_index], 8, 0);
     lv_obj_add_flag(profile_icons[profile_index], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_move_to_index(profile_icons[profile_index], 0);
 
