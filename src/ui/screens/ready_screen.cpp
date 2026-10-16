@@ -412,7 +412,7 @@ void ReadyScreen::create_profile_page(lv_obj_t* parent, int profile_index, const
                                                             &icon_mode_custom;
     profile_icons[profile_index] = lv_image_create(label_container);
     lv_image_set_src(profile_icons[profile_index], icon_dsc);
-    lv_obj_set_style_image_recolor(profile_icons[profile_index], lv_color_hex(THEME_COLOR_SECONDARY), 0);
+    lv_obj_set_style_image_recolor(profile_icons[profile_index], lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
     lv_obj_set_style_image_recolor_opa(profile_icons[profile_index], LV_OPA_COVER, 0);
     lv_obj_set_style_margin_bottom(profile_icons[profile_index], 8, 0);
     lv_obj_add_flag(profile_icons[profile_index], LV_OBJ_FLAG_CLICKABLE);
