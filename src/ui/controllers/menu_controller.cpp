@@ -107,16 +107,25 @@ void MenuUIController::update() {
     WeightSensor* sensor = ui_manager_->hardware_manager->get_weight_sensor();
     const uint32_t now = millis();
 
-    // These labels used to be rewritten at the 62 Hz render rate, invalidating
-    // large parts of the LVGL menu while the user was dragging it. Status data
-    // does not need frame-rate polling; a 4 Hz refresh keeps it current and
-    // leaves the render loop free to scroll smoothly.
-    if (now - last_status_update_ms_ >= 250) {
+    lv_obj_t* cur_page = ui_manager_->menu_screen.get_current_page();
+    const bool page_changed = (cur_page != last_active_page_);
+    last_active_page_ = cur_page;
+
+    // Only update status labels for the currently active sub-page, and at a
+    // relaxed 1 Hz rate (or immediately upon entering a sub-page).
+    // When navigating or scrolling other pages (or the root menu list), avoid
+    // unnecessary label re-formatting and Wi-Fi / BLE polling.
+    if (page_changed || (now - last_status_update_ms_ >= 1000)) {
         last_status_update_ms_ = now;
-        ui_manager_->menu_screen.update_info(sensor, now, ESP.getFreeHeap());
-        ui_manager_->menu_screen.update_diagnostics(sensor);
-        ui_manager_->menu_screen.update_ble_status();
-        ui_manager_->menu_screen.update_network_status();
+        if (cur_page == ui_manager_->menu_screen.get_info_page()) {
+            ui_manager_->menu_screen.update_info(sensor, now, ESP.getFreeHeap());
+        } else if (cur_page == ui_manager_->menu_screen.get_diagnostics_page()) {
+            ui_manager_->menu_screen.update_diagnostics(sensor);
+        } else if (cur_page == ui_manager_->menu_screen.get_bluetooth_page()) {
+            ui_manager_->menu_screen.update_ble_status();
+        } else if (cur_page == ui_manager_->menu_screen.get_network_page()) {
+            ui_manager_->menu_screen.update_network_status();
+        }
     }
 
     if (ui_manager_->menu_screen.is_scale_page_active()) {

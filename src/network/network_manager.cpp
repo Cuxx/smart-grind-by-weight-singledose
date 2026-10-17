@@ -188,16 +188,23 @@ String SmartGrindNetworkManager::ip_address() const {
 
 int SmartGrindNetworkManager::get_rssi() const {
     if (!is_connected()) {
+        cached_rssi_ = 0;
+        last_rssi_poll_ms_ = 0;
         return 0;
     }
-    return WiFi.RSSI();
+    const uint32_t now = millis();
+    if (last_rssi_poll_ms_ == 0 || (now - last_rssi_poll_ms_) >= 5000) {
+        cached_rssi_ = WiFi.RSSI();
+        last_rssi_poll_ms_ = now;
+    }
+    return cached_rssi_;
 }
 
 int8_t SmartGrindNetworkManager::get_signal_level() const {
     if (!is_connected()) {
         return 0;
     }
-    const int rssi = WiFi.RSSI();
+    const int rssi = get_rssi();
     if (rssi > 0 || rssi < -110) {
         return 1;
     }
@@ -301,6 +308,10 @@ void SmartGrindNetworkManager::stop_network() {
 void SmartGrindNetworkManager::set_state(NetworkState state) {
     state_.store(state);
     state_changed_at_ms_ = millis();
+    if (state != NetworkState::WIFI_CONNECTED) {
+        cached_rssi_ = 0;
+        last_rssi_poll_ms_ = 0;
+    }
 }
 
 String SmartGrindNetworkManager::default_hostname() {

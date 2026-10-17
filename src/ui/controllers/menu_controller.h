@@ -69,6 +69,7 @@ private:
     lv_timer_t* motor_timer_{};
     OperationInterlock::Token motor_test_token_ = 0;
     uint32_t last_status_update_ms_ = 0;
+    lv_obj_t* last_active_page_ = nullptr;
 
     void perform_factory_reset();
     void execute_purge_operation();
