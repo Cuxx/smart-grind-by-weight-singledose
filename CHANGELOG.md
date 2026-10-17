@@ -8,10 +8,10 @@ line. Earlier release history remains available in the original project's
 
 ### Display & Mode Icons
 - **Mode Icons instead of Text**: Added toggle on the grinder touchscreen under **Menu → Display** and in the web interface under **Settings → Display & screensaver** (default enabled). When active, mode titles on the ready screen are replaced with crisp, high-resolution antialiased icons (112×112 px) rendered in pure white:
-  - **Single Dose**: Precision digital scale with weighing platform.
-  - **Single**: Cappuccino cup with rounded bowl, saucer, and fine foam detail.
-  - **Double**: Two staggered cappuccino cups with foam detail.
-  - **Custom**: Precision drafting pencil angled with graphite tip.
+  - **Single Dose**: Open, outlined digital scale with a clear weighing platform.
+  - **Single**: Minimal outlined cappuccino cup with a single steam stroke and saucer.
+  - **Double**: Two outlined cups with a plus sign to make the double portion clear.
+  - **Custom**: Cappuccino cup with a compact slider control badge.
 - **Desktop Simulator Build Support**: Linked mode icon assets in CMake for seamless desktop simulation and CI smoke testing.
 
 ### Wi-Fi Connectivity & Signal
