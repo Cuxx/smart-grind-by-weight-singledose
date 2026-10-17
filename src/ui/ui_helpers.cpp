@@ -18,6 +18,8 @@ void style_as_button(lv_obj_t* object, int32_t width, int32_t height, const lv_f
     }
     
     lv_obj_clear_flag(object, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(object, LV_OBJ_FLAG_PRESS_LOCK);
+    lv_obj_add_flag(object, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
 }
 
 lv_obj_t* create_button(lv_obj_t* parent, const char* text, lv_color_t bg_color, int32_t width, int32_t height, const lv_font_t* font){ 

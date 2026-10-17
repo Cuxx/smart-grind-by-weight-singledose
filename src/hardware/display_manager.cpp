@@ -181,6 +181,8 @@ void DisplayManager::init() {
     lvgl_input = lv_indev_create();
     lv_indev_set_type(lvgl_input, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(lvgl_input, touchpad_read_cb);
+    lv_indev_set_scroll_limit(lvgl_input, 6);
+    lv_indev_set_scroll_throw(lvgl_input, 30);
     
     initialized = true;
 }
