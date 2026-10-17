@@ -6,6 +6,8 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+## [1.6.5] - 2026-10-17
+
 ### Display & Mode Icons
 - **Mode Icons instead of Text**: Added toggle on the grinder touchscreen under **Menu → Display** and in the web interface under **Settings → Display & screensaver** (default enabled). When active, mode titles on the ready screen are replaced with crisp, high-resolution antialiased icons (112×112 px) rendered in pure white:
   - **Single Dose**: Open, outlined digital scale with a clear weighing platform.
@@ -473,3 +475,4 @@ fixes described above.
 [1.6.2]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.2
 [1.6.3]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.3
 [1.6.4]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.4
+[1.6.5]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.5
