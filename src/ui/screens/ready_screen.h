@@ -9,17 +9,22 @@ using ReadyScreenText = String;
 #endif
 #include "../../config/constants.h"
 #include "../../controllers/grind_mode.h"
+#include "../assets/mode_icons.h"
 
 class ReadyScreen {
 private:
     lv_obj_t* screen = nullptr;
     lv_obj_t* tabview = nullptr;
     lv_obj_t* manual_tab = nullptr;
+    lv_obj_t* manual_title_label = nullptr;
+    lv_obj_t* manual_icon = nullptr;
     lv_obj_t* manual_weight_label = nullptr;
     lv_obj_t* manual_scale_status_label = nullptr;
     lv_obj_t* manual_tare_button = nullptr;
     lv_obj_t* manual_safety_label = nullptr;
     lv_obj_t* profile_tabs[3]{};
+    lv_obj_t* profile_name_labels[3]{};
+    lv_obj_t* profile_icons[3]{};
     lv_obj_t* weight_labels[3]{};
     lv_obj_t* wifi_tab = nullptr;
     lv_obj_t* wifi_status_label = nullptr;
@@ -40,6 +45,7 @@ private:
     uint32_t cached_single_dose_timeout_s_ = 45;
     lv_event_cb_t profile_long_press_handler_ = nullptr;
     lv_event_cb_t manual_tare_handler_ = nullptr;
+    bool show_mode_icons_ = true;
 
     bool tab_manual_enabled_ = true;
     bool profile_tab_enabled_[3] = {true, true, true};
@@ -108,6 +114,8 @@ public:
     void set_active_tab(int tab);
     void set_profile_long_press_handler(lv_event_cb_t handler);
     void set_manual_tare_handler(lv_event_cb_t handler);
+    void set_show_mode_icons(bool enabled);
+    bool is_show_mode_icons() const { return show_mode_icons_; }
     
     bool is_visible() const { return visible; }
     lv_obj_t* get_screen() const { return screen; }

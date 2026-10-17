@@ -132,6 +132,7 @@ Main Screen (swipe left/right between tabs, up/down to toggle weight/time mode i
     |   |   \-- Auto-disable timer display
     |   |
 	    |   +-- Display
+	    |   |   |-- Mode Icons toggle (icons vs text titles on grind screens)
 	    |   |   |-- Normal brightness slider
 	    |   |   |-- Screensaver brightness slider
 	    |   |   |-- Screensaver startup/idle toggles

@@ -598,6 +598,14 @@ void MenuScreen::create_display_page(lv_obj_t* parent) {
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::DISPLAY_OFF_TOGGLE)));
     }
 
+    // Grind screens
+    create_separator(parent, "Grind Screens");
+    create_toggle_row(parent, "Mode Icons", &mode_icons_toggle);
+    if (mode_icons_toggle) {
+        lv_obj_add_event_cb(mode_icons_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::MODE_ICONS_TOGGLE)));
+    }
+
 }
 
 
@@ -1375,6 +1383,16 @@ void MenuScreen::update_screensaver_toggles() {
             lv_obj_add_state(display_off_toggle, LV_STATE_CHECKED);
         } else {
             lv_obj_clear_state(display_off_toggle, LV_STATE_CHECKED);
+        }
+    }
+
+    Preferences* main_prefs = hardware_manager ? hardware_manager->get_preferences() : nullptr;
+    const bool mode_icons_on = main_prefs ? main_prefs->getBool("mode_icons", true) : true;
+    if (mode_icons_toggle) {
+        if (mode_icons_on) {
+            lv_obj_add_state(mode_icons_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(mode_icons_toggle, LV_STATE_CHECKED);
         }
     }
 }

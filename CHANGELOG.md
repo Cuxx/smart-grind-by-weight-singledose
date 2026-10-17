@@ -6,6 +6,13 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+### Display & Mode Icons
+- **Mode Icons instead of Text**: Added toggle on the grinder touchscreen under **Menu → Display** and in the web interface under **Settings → Display & screensaver** (default enabled). When active, mode titles on the ready screen are replaced with crisp antialiased icons:
+  - **Single Dose**: Precision digital scale with weighing platform.
+  - **Single**: Espresso cup with saucer and subtle steam.
+  - **Double**: Two staggered espresso cups.
+  - **Custom**: Drafting pencil angled for right-handed orientation.
+
 ### Wi-Fi Connectivity & Signal
 - **Wi-Fi High-Power Mode**: Added user-controllable toggle directly on the touchscreen under **Menu → Wi-Fi** and in the web interface under **Settings → Connectivity → Wi-Fi** (persisted in NVS as `wifi_perf`, default disabled / power-saving mode). When enabled, modem sleep is disabled and TX power is increased to 19.5 dBm for maximum throughput, low latency and robust uplink through metal grinder enclosures.
 - **Real-Time Signal Display**: Added live RSSI signal indicator in dBm on the touchscreen under **Menu → Info → System Info** (and in the Wi-Fi status view) as well as under **Settings → Connectivity → Wi-Fi** in the web interface.

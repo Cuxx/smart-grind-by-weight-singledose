@@ -86,6 +86,7 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::SCREENSAVER_STARTUP_TOGGLE, [this](lv_event_t*) { handle_screensaver_startup_toggle(); });
     EventBridgeLVGL::register_handler(ET::SCREENSAVER_SLEEP_TOGGLE, [this](lv_event_t*) { handle_screensaver_sleep_toggle(); });
     EventBridgeLVGL::register_handler(ET::DISPLAY_OFF_TOGGLE, [this](lv_event_t*) { handle_display_off_toggle(); });
+    EventBridgeLVGL::register_handler(ET::MODE_ICONS_TOGGLE, [this](lv_event_t*) { handle_mode_icons_toggle(); });
 
     // Note: Event registration for menu widgets is done in the page creation functions
     // (menu_screen.cpp) because the menu is created lazily and destroyed on hide.
@@ -914,6 +915,20 @@ void MenuUIController::handle_display_off_toggle() {
     }
     LOG_BLE("Display off after screensaver: %s (delay %us)\n",
             enabled ? "enabled" : "disabled", settings.display_off_delay_s);
+}
+
+void MenuUIController::handle_mode_icons_toggle() {
+    if (!ui_manager_) return;
+    auto* toggle = ui_manager_->menu_screen.get_mode_icons_toggle();
+    if (!toggle) return;
+    const bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    auto* hardware = ui_manager_->get_hardware_manager();
+    Preferences* prefs = hardware ? hardware->get_preferences() : nullptr;
+    if (prefs) {
+        prefs->putBool("mode_icons", enabled);
+    }
+    ui_manager_->ready_screen.set_show_mode_icons(enabled);
+    device_api.mark_settings_dirty();
 }
 
 void MenuUIController::perform_factory_reset() {

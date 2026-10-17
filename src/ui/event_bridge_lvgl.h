@@ -73,6 +73,7 @@ public:
         GRIND_TAB_SINGLE_TOGGLE,
         GRIND_TAB_DOUBLE_TOGGLE,
         GRIND_TAB_CUSTOM_TOGGLE,
+        MODE_ICONS_TOGGLE,
         COUNT
     };
 

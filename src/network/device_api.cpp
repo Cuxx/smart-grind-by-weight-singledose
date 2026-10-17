@@ -658,6 +658,10 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
         settings.has_tab_custom = true;
         settings.tab_custom = form_bool(value("tab_custom"));
     }
+    if (request->hasParam("mode_icons", true)) {
+        settings.has_mode_icons = true;
+        settings.mode_icons = form_bool(value("mode_icons"));
+    }
 
     if (settings.has_tab_manual || settings.has_tab_single || settings.has_tab_double || settings.has_tab_custom) {
         Preferences* grinder_prefs = hardware_ ? hardware_->get_preferences() : nullptr;
@@ -775,6 +779,9 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     }
     if (settings.has_tab_custom) {
         saved = (grinder->putBool("tab_custom", settings.tab_custom) == sizeof(bool)) && saved;
+    }
+    if (settings.has_mode_icons) {
+        saved = (grinder->putBool("mode_icons", settings.mode_icons) == sizeof(bool)) && saved;
     }
 
     auto put_bool = [](const char* name_space, const char* key, bool value) {
@@ -920,6 +927,7 @@ void DeviceApi::refresh_settings_cache() {
     const bool tab_single = grinder ? grinder->getBool("tab_single", true) : true;
     const bool tab_double = grinder ? grinder->getBool("tab_double", true) : true;
     const bool tab_custom = grinder ? grinder->getBool("tab_custom", true) : true;
+    const bool mode_icons = grinder ? grinder->getBool("mode_icons", true) : true;
 
     char json[2048];
     snprintf(json, sizeof(json),
@@ -940,7 +948,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"clock_font\":\"%s\",\"timezone\":\"%s\","
              "\"has_custom_screensaver\":%s,\"has_custom_clock_font\":%s,"
              "\"gaggimate_host\":\"%s\"},"
-             "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"wifi_performance_mode\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,"
+             "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"wifi_performance_mode\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,\"mode_icons\":%s,"
              "\"tabs\":{\"manual\":%s,\"single\":%s,\"double\":%s,\"custom\":%s}}",
              profile.current_profile,
              profile.mode == GrindMode::TIME ? "time" : "weight",
@@ -972,6 +980,7 @@ void DeviceApi::refresh_settings_cache() {
              network_manager.is_performance_mode() ? "true" : "false",
              read_bool("bluetooth", "startup", true) ? "true" : "false",
              (bluetooth_manager_ ? bluetooth_manager_->is_icon_menu_only() : read_bool("bluetooth", "icon_menu", false)) ? "true" : "false",
+             mode_icons ? "true" : "false",
              tab_manual ? "true" : "false",
              tab_single ? "true" : "false",
              tab_double ? "true" : "false",
