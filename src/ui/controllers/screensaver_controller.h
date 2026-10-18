@@ -30,8 +30,14 @@ public:
     /// Load image from LittleFS and display as full-screen overlay
     void show();
 
-    /// Hide overlay and free image buffer
+    /// Hide overlay
     void hide();
+
+    /// Invalidate cached image buffer in PSRAM (e.g. after new upload or delete)
+    static void invalidate_image_cache();
+
+    /// Free any cached image buffer in PSRAM
+    void free_image();
 
     bool is_visible() const { return visible_; }
 
@@ -75,5 +81,4 @@ private:
     void update_clock();
     static void animation_timer_callback(lv_timer_t* timer);
     bool load_image();
-    void free_image();
 };

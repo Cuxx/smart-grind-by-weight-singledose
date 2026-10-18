@@ -28,8 +28,15 @@ ScreensaverController::ScreensaverController()
     memset(&image_dsc_, 0, sizeof(image_dsc_));
 }
 
+static bool s_image_dirty_ = false;
+
 ScreensaverController::~ScreensaverController() {
     hide();
+    free_image();
+}
+
+void ScreensaverController::invalidate_image_cache() {
+    s_image_dirty_ = true;
 }
 
 bool ScreensaverController::has_image() const {
@@ -226,7 +233,11 @@ uint32_t ScreensaverController::get_startup_timeout_ms() const {
 void ScreensaverController::show() {
     if (visible_) return;
     style_ = selected_style();
-    if ((style_ == "custom" || style_ == "clock_custom") && !load_image()) return;
+    if (style_ != "custom" && style_ != "clock_custom") {
+        free_image();
+    } else {
+        if (!load_image()) return;
+    }
 
     // Save the current active screen so we can restore it on hide().
     // Screens in this project are created once and never deleted, so
@@ -309,7 +320,9 @@ void ScreensaverController::hide() {
         minutes_label_ = nullptr;
     }
 
-    free_image();
+    if (style_ != "custom" && style_ != "clock_custom") {
+        free_image();
+    }
     free_custom_font();
     visible_ = false;
 }
@@ -438,8 +451,23 @@ void ScreensaverController::update_builtin() {
 }
 
 bool ScreensaverController::load_image() {
+    if (image_buffer_ != nullptr && !s_image_dirty_) {
+        return true;
+    }
+    if (image_buffer_ != nullptr && s_image_dirty_) {
+        free_image();
+        s_image_dirty_ = false;
+    }
+
+#if defined(SMART_GRIND_SIM)
+    image_buffer_ = (uint8_t*)malloc(BLE_IMAGE_EXPECTED_SIZE);
+#else
     image_buffer_ = (uint8_t*)heap_caps_malloc(BLE_IMAGE_EXPECTED_SIZE,
                                                 MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!image_buffer_) {
+        image_buffer_ = (uint8_t*)malloc(BLE_IMAGE_EXPECTED_SIZE);
+    }
+#endif
     if (!image_buffer_) {
         LOG_BLE("Screensaver: PSRAM allocation failed (%d bytes)\n", BLE_IMAGE_EXPECTED_SIZE);
         return false;
@@ -469,12 +497,17 @@ bool ScreensaverController::load_image() {
         return false;
     }
 
+    s_image_dirty_ = false;
     return true;
 }
 
 void ScreensaverController::free_image() {
     if (image_buffer_) {
+#if !defined(SMART_GRIND_SIM)
         heap_caps_free(image_buffer_);
+#else
+        free(image_buffer_);
+#endif
         image_buffer_ = nullptr;
     }
 }

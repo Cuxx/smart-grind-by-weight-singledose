@@ -28,9 +28,7 @@ void ReadyUIController::update() {
 
     if (ui_manager_->state_machine &&
         ui_manager_->state_machine->is_state(UIState::READY) &&
-        ui_manager_->ready_screen.is_manual_tab(ui_manager_->current_tab) &&
-        now - last_manual_scale_update_ms_ >= 100) {
-        last_manual_scale_update_ms_ = now;
+        ui_manager_->ready_screen.is_manual_tab(ui_manager_->current_tab)) {
         auto* hardware = ui_manager_->get_hardware_manager();
         auto* sensor = hardware ? hardware->get_weight_sensor() : nullptr;
         const bool available = sensor && !sensor->has_hardware_fault() &&
