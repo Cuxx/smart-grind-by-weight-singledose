@@ -74,6 +74,10 @@ void MenuScreen::create(BluetoothManager* bluetooth, GrindController* grind_ctrl
     auto_start_threshold_slider = nullptr;
     auto_start_threshold_label = nullptr;
     display_off_toggle = nullptr;
+    grind_layout_radio_group = nullptr;
+    grind_layout_demo_button = nullptr;
+    disc_color_button = nullptr;
+    disc_color_label = nullptr;
     lv_obj_add_flag(screen, LV_OBJ_FLAG_HIDDEN);
 
     // Create menu UI immediately at boot for instant access
@@ -553,6 +557,15 @@ void MenuScreen::update_network_status() {
 
 }
 
+// Callback for grind layout radio button selection
+static void grind_layout_callback(int selected_index, void* user_data) {
+    MenuScreen* self = static_cast<MenuScreen*>(user_data);
+    if (self) {
+        self->set_disc_color_button_visible(selected_index == 1 || selected_index == 2);
+    }
+    EventBridgeLVGL::handle_event(EventBridgeLVGL::EventType::GRIND_LAYOUT_RADIO_BUTTON, nullptr);
+}
+
 void MenuScreen::create_display_page(lv_obj_t* parent) {
     lv_obj_set_layout(parent, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
@@ -607,8 +620,51 @@ void MenuScreen::create_display_page(lv_obj_t* parent) {
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::MODE_ICONS_TOGGLE)));
     }
 
-}
+    create_description_label(parent, "Grind screen animation style.");
+    const char* layout_modes[] = {"Arc", "Disc Ring", "Disc Solid", "Chart"};
+    int initial_layout = 0;
+    Preferences* main_prefs = hardware_manager ? hardware_manager->get_preferences() : nullptr;
+    if (main_prefs) {
+        initial_layout = main_prefs->getInt("grind_layout", 0);
+        if (initial_layout < 0 || initial_layout > 3) initial_layout = 0;
+    }
+    grind_layout_radio_group = create_radio_button_group(
+        parent,
+        layout_modes,
+        4,
+        LV_FLEX_FLOW_ROW_WRAP,
+        initial_layout,
+        126, 38,
+        grind_layout_callback,
+        this,
+        &lv_font_montserrat_16
+    );
 
+    int init_color = main_prefs ? main_prefs->getInt("disc_color", 0) : 0;
+    if (init_color < 0 || init_color >= NUM_DISC_COLOR_PRESETS) init_color = 0;
+    char color_btn_text[48];
+    snprintf(color_btn_text, sizeof(color_btn_text), "Disc Color: %s", DISC_COLOR_PRESETS[init_color].name);
+    disc_color_button = create_button(parent, color_btn_text, lv_color_hex(DISC_COLOR_PRESETS[init_color].color_hex), 220, 38, &lv_font_montserrat_16);
+    lv_obj_set_style_border_width(disc_color_button, 1, 0);
+    lv_obj_set_style_border_color(disc_color_button, lv_color_hex(0x606060), 0);
+    lv_obj_set_style_margin_top(disc_color_button, 6, 0);
+    using ET = EventBridgeLVGL::EventType;
+    if (disc_color_button) {
+        disc_color_label = lv_obj_get_child(disc_color_button, 0);
+        lv_obj_add_event_cb(disc_color_button, EventBridgeLVGL::dispatch_event, LV_EVENT_CLICKED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::DISC_COLOR_CYCLE)));
+        if (initial_layout != 1 && initial_layout != 2) {
+            lv_obj_add_flag(disc_color_button, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    grind_layout_demo_button = create_button(parent, LV_SYMBOL_PLAY "  Demo Animation", lv_color_hex(THEME_COLOR_ACCENT));
+    lv_obj_set_style_margin_top(grind_layout_demo_button, 10, 0);
+    if (grind_layout_demo_button) {
+        lv_obj_add_event_cb(grind_layout_demo_button, EventBridgeLVGL::dispatch_event, LV_EVENT_CLICKED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::MENU_DEMO_ANIMATION)));
+    }
+}
 
 // Callback for grind mode radio button selection
 static void grind_mode_callback(int selected_index, void* user_data) {
@@ -1394,6 +1450,35 @@ void MenuScreen::update_screensaver_toggles() {
             lv_obj_add_state(mode_icons_toggle, LV_STATE_CHECKED);
         } else {
             lv_obj_clear_state(mode_icons_toggle, LV_STATE_CHECKED);
+        }
+    }
+
+    if (grind_layout_radio_group) {
+        int current_layout_idx = main_prefs ? main_prefs->getInt("grind_layout", 0) : 0;
+        if (current_layout_idx < 0 || current_layout_idx > 3) current_layout_idx = 0;
+        radio_button_group_set_selection(grind_layout_radio_group, current_layout_idx);
+        set_disc_color_button_visible(current_layout_idx == 1 || current_layout_idx == 2);
+    }
+
+    if (disc_color_label && main_prefs) {
+        int color_idx = main_prefs->getInt("disc_color", 0);
+        if (color_idx < 0 || color_idx >= NUM_DISC_COLOR_PRESETS) color_idx = 0;
+        update_disc_color_button(DISC_COLOR_PRESETS[color_idx].name);
+    }
+}
+
+void MenuScreen::update_disc_color_button(const char* preset_name) {
+    if (disc_color_label && preset_name) {
+        char buf[48];
+        snprintf(buf, sizeof(buf), "Disc Color: %s", preset_name);
+        lv_label_set_text(disc_color_label, buf);
+    }
+    if (disc_color_button && preset_name) {
+        for (int i = 0; i < NUM_DISC_COLOR_PRESETS; i++) {
+            if (strcmp(DISC_COLOR_PRESETS[i].name, preset_name) == 0) {
+                lv_obj_set_style_bg_color(disc_color_button, lv_color_hex(DISC_COLOR_PRESETS[i].color_hex), 0);
+                break;
+            }
         }
     }
 }

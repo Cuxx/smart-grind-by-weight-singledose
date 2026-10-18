@@ -245,7 +245,8 @@ lv_obj_t* create_radio_button_group(
     int32_t button_width,
     int32_t button_height,
     radio_button_callback_t callback,
-    void* user_data) {
+    void* user_data,
+    const lv_font_t* font) {
     
     // Create container
     lv_obj_t* group_container = lv_obj_create(parent);
@@ -263,6 +264,11 @@ lv_obj_t* create_radio_button_group(
         lv_obj_set_flex_align(group_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(group_container, 10, 0);
         lv_obj_set_size(group_container, 280, LV_SIZE_CONTENT);
+    } else if (layout == LV_FLEX_FLOW_ROW_WRAP) {
+        lv_obj_set_flex_align(group_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_column(group_container, 8, 0);
+        lv_obj_set_style_pad_row(group_container, 8, 0);
+        lv_obj_set_size(group_container, 260, LV_SIZE_CONTENT);
     } else {
         lv_obj_set_flex_align(group_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_row(group_container, 10, 0);
@@ -277,16 +283,24 @@ lv_obj_t* create_radio_button_group(
     data->callback = callback;
     data->user_data = user_data;
     
+    // Determine font
+    const lv_font_t* btn_font = font;
+    if (!btn_font) {
+        btn_font = (button_height <= 40 || option_count > 2) ? &lv_font_montserrat_16 : &lv_font_montserrat_24;
+    }
+
     // Calculate button width if auto
     int32_t actual_button_width = button_width;
     if (layout == LV_FLEX_FLOW_ROW && button_width == -1) {
         actual_button_width = (280 - (option_count - 1) * 10) / option_count;
+    } else if (layout == LV_FLEX_FLOW_ROW_WRAP && (button_width == -1 || button_width > 126)) {
+        actual_button_width = 126;
     }
     
     // Create buttons
     for (int i = 0; i < option_count; i++) {
         lv_color_t color = (i == initial_selection) ? lv_color_hex(THEME_COLOR_PRIMARY) : lv_color_hex(THEME_COLOR_NEUTRAL);
-        data->buttons[i] = create_button(group_container, options[i], color, actual_button_width, button_height, &lv_font_montserrat_24);
+        data->buttons[i] = create_button(group_container, options[i], color, actual_button_width, button_height, btn_font);
         
         // Add event handler
         lv_obj_add_event_cb(data->buttons[i], radio_button_event_handler, LV_EVENT_CLICKED, nullptr);

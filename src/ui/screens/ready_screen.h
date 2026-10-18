@@ -116,6 +116,7 @@ public:
     void set_manual_tare_handler(lv_event_cb_t handler);
     void set_show_mode_icons(bool enabled);
     bool is_show_mode_icons() const { return show_mode_icons_; }
+    lv_obj_t* get_weight_label(int profile) const { return profile >= 0 && profile < 3 ? weight_labels[profile] : nullptr; }
     
     bool is_visible() const { return visible; }
     lv_obj_t* get_screen() const { return screen; }

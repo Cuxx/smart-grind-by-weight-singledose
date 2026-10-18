@@ -220,6 +220,11 @@ bool ScreenTimeoutController::is_protected_state() const {
     if (ota_active) {
         return true;
     }
+    bool is_demo = (ui_manager_->grinding_controller_ &&
+                    ui_manager_->grinding_controller_->is_demo_active());
+    if (is_demo) {
+        return true;
+    }
 
     if (!ui_manager_->state_machine) {
         return false;

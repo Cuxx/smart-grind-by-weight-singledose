@@ -8,6 +8,7 @@
 #include "../../controllers/grind_events.h"
 #include "../../controllers/grind_mode.h"
 #include "../../logging/grind_logging.h"
+#include "../../system/operation_interlock.h"
 #include "../ui_manager.h"
 
 GrindingUIController* GrindingUIController::instance_ = nullptr;
@@ -100,6 +101,16 @@ void GrindingUIController::register_events() {
         }, LV_EVENT_CLICKED, this);
     }
 
+    if (lv_obj_t* disc = ui_manager_->grinding_screen.get_disc_screen_obj()) {
+        lv_obj_add_event_cb(disc, [](lv_event_t* e) {
+            if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+                if (auto* controller = static_cast<GrindingUIController*>(lv_event_get_user_data(e))) {
+                    controller->handle_layout_toggle();
+                }
+            }
+        }, LV_EVENT_CLICKED, this);
+    }
+
     // NOTE: Purge confirm reuses existing grind_button_ (CANCEL) and pulse_button_ (CONTINUE)
     // No additional event registration needed - handle_pulse_button() checks for PURGE_CONFIRM phase
 }
@@ -116,6 +127,22 @@ void GrindingUIController::on_state_changed(UIState new_state) {
     if (new_state != UIState::GRIND_TIMEOUT && grind_timeout_timer_) {
         lv_timer_del(grind_timeout_timer_);
         grind_timeout_timer_ = nullptr;
+    }
+    if (is_demo_active_) {
+        if (demo_timer_) {
+            lv_timer_del(demo_timer_);
+            demo_timer_ = nullptr;
+        }
+        if (demo_auto_return_timer_) {
+            lv_timer_del(demo_auto_return_timer_);
+            demo_auto_return_timer_ = nullptr;
+        }
+        is_demo_active_ = false;
+        demo_completed_ = false;
+        if (operation_interlock().owns(demo_token_)) {
+            operation_interlock().release(demo_token_);
+            demo_token_ = 0;
+        }
     }
 
     switch (new_state) {
@@ -183,6 +210,11 @@ void GrindingUIController::update(UIState current_state) {
 
 void GrindingUIController::handle_grind_button() {
     if (!ui_manager_ || !ui_manager_->state_machine) {
+        return;
+    }
+
+    if (is_demo_active_) {
+        stop_demo();
         return;
     }
 
@@ -284,14 +316,40 @@ void GrindingUIController::handle_layout_toggle() {
         return;
     }
 
+    if (is_demo_active_) {
+        if (demo_completed_) {
+            stop_demo();
+        }
+        return;
+    }
+
+    if (ui_manager_->state_machine->is_state(UIState::GRIND_COMPLETE) &&
+        ui_manager_->grinding_screen.is_disc_layout()) {
+        if (ui_manager_->grind_controller) {
+            ui_manager_->grind_controller->return_to_idle();
+        }
+        return;
+    }
+
     if (ui_manager_->state_machine->is_state(UIState::GRINDING) ||
         ui_manager_->state_machine->is_state(UIState::GRIND_COMPLETE) ||
         ui_manager_->state_machine->is_state(UIState::GRIND_TIMEOUT)) {
         GrindScreenLayout current_layout = ui_manager_->grinding_screen.get_layout();
         if (current_layout == GrindScreenLayout::MINIMAL_ARC) {
+            ui_manager_->grinding_screen.set_layout(GrindScreenLayout::DISC_RING);
+        } else if (current_layout == GrindScreenLayout::DISC_RING) {
+            ui_manager_->grinding_screen.set_layout(GrindScreenLayout::DISC_SOLID);
+        } else if (current_layout == GrindScreenLayout::DISC_SOLID) {
             ui_manager_->grinding_screen.set_layout(GrindScreenLayout::NERDY_CHART);
         } else {
             ui_manager_->grinding_screen.set_layout(GrindScreenLayout::MINIMAL_ARC);
+        }
+        if (grind_button_ && ui_manager_->state_machine->is_state(UIState::GRIND_COMPLETE)) {
+            if (ui_manager_->grinding_screen.is_disc_layout()) {
+                lv_obj_add_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_clear_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
+            }
         }
     }
 }
@@ -660,6 +718,7 @@ void GrindingUIController::enter_ready_state() {
     if (pulse_button_) {
         lv_obj_add_flag(pulse_button_, LV_OBJ_FLAG_HIDDEN);
     }
+    ui_manager_->grinding_screen.set_completed(false);
     ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
 }
 
@@ -674,6 +733,7 @@ void GrindingUIController::enter_edit_state() {
 
 void GrindingUIController::enter_grinding_state() {
     WeightSensor* weight_sensor = ui_manager_->hardware_manager->get_weight_sensor();
+    ui_manager_->grinding_screen.set_completed(false);
     ui_manager_->grinding_screen.reset_chart_data();
     ui_manager_->grinding_screen.update_profile_name(
         ui_manager_->current_mode == GrindMode::MANUAL
@@ -693,7 +753,11 @@ void GrindingUIController::enter_grinding_state() {
 
 void GrindingUIController::enter_grind_complete_state() {
     if (grind_button_) {
-        lv_obj_clear_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
+        if (ui_manager_->grinding_screen.is_disc_layout()) {
+            lv_obj_add_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_clear_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
+        }
     }
     ui_manager_->grinding_screen.update_profile_name(
         ui_manager_->current_mode == GrindMode::MANUAL
@@ -702,6 +766,7 @@ void GrindingUIController::enter_grind_complete_state() {
     ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
     ui_manager_->grinding_screen.update_current_weight(final_grind_weight_);
     ui_manager_->grinding_screen.update_progress(final_grind_progress_);
+    ui_manager_->grinding_screen.set_completed(true);
     if (ui_manager_->current_mode == GrindMode::MANUAL) {
         ui_manager_->grinding_screen.update_target_weight_text("Single Dose");
     }
@@ -711,6 +776,7 @@ void GrindingUIController::enter_grind_timeout_state() {
     if (grind_button_) {
         lv_obj_clear_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
     }
+    ui_manager_->grinding_screen.set_completed(false);
     ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
     ui_manager_->grinding_screen.update_profile_name("ERROR");
     char error_display[64];
@@ -756,6 +822,14 @@ void GrindingUIController::cancel_timers() {
         lv_timer_del(grind_timeout_timer_);
         grind_timeout_timer_ = nullptr;
     }
+    if (demo_timer_) {
+        lv_timer_del(demo_timer_);
+        demo_timer_ = nullptr;
+    }
+    if (demo_auto_return_timer_) {
+        lv_timer_del(demo_auto_return_timer_);
+        demo_auto_return_timer_ = nullptr;
+    }
 }
 
 void GrindingUIController::grind_complete_timer_cb(lv_timer_t* timer) {
@@ -776,4 +850,144 @@ void GrindingUIController::grind_timeout_timer_cb(lv_timer_t* timer) {
 
     controller->ui_manager_->grind_controller->return_to_idle();
     controller->grind_timeout_timer_ = nullptr;
+}
+
+void GrindingUIController::start_demo() {
+    if (!ui_manager_) return;
+
+    const auto token = operation_interlock().try_acquire();
+    if (!token) return;
+    demo_token_ = token;
+
+    is_demo_active_ = true;
+    demo_completed_ = false;
+
+    // Determine target: use current profile weight if available and positive, else 18.0g
+    demo_target_weight_ = 18.0f;
+    if (ui_manager_->profile_controller) {
+        float pw = ui_manager_->profile_controller->get_current_weight();
+        if (pw > 0.0f) demo_target_weight_ = pw;
+    }
+
+    demo_previous_state_ = ui_manager_->state_machine ? ui_manager_->state_machine->get_current_state() : UIState::MENU;
+
+    // Ensure we are in weight mode for demo (so manual mode is disabled during demo)
+    ui_manager_->grinding_screen.set_mode(GrindMode::WEIGHT);
+
+    // Hide screens, show grinding screen
+    ui_manager_->ready_screen.hide();
+    ui_manager_->menu_screen.hide();
+    ui_manager_->grinding_screen.show();
+
+    // Reset views
+    ui_manager_->grinding_screen.set_completed(false);
+    ui_manager_->grinding_screen.reset_chart_data();
+    ui_manager_->grinding_screen.update_profile_name("DEMO");
+    ui_manager_->grinding_screen.update_target_weight(demo_target_weight_);
+    ui_manager_->grinding_screen.update_current_weight(0.0f);
+    ui_manager_->grinding_screen.update_progress(0);
+
+    // Setup grind button
+    if (grind_button_) {
+        lv_obj_align(grind_button_, LV_ALIGN_BOTTOM_MID, 0, -10);
+        lv_obj_clear_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
+        lv_img_set_src(grind_icon_, LV_SYMBOL_STOP);
+        lv_obj_set_style_bg_color(grind_button_, lv_color_hex(THEME_COLOR_PRIMARY), 0);
+    }
+    if (pulse_button_) {
+        lv_obj_add_flag(pulse_button_, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    demo_start_ms_ = millis();
+    if (demo_timer_) {
+        lv_timer_del(demo_timer_);
+    }
+    demo_timer_ = lv_timer_create(static_demo_timer_cb, 30, this);
+}
+
+void GrindingUIController::stop_demo() {
+    if (demo_timer_) {
+        lv_timer_del(demo_timer_);
+        demo_timer_ = nullptr;
+    }
+    if (demo_auto_return_timer_) {
+        lv_timer_del(demo_auto_return_timer_);
+        demo_auto_return_timer_ = nullptr;
+    }
+    is_demo_active_ = false;
+    demo_completed_ = false;
+
+    if (operation_interlock().owns(demo_token_)) {
+        operation_interlock().release(demo_token_);
+        demo_token_ = 0;
+    }
+
+    if (ui_manager_) {
+        if (demo_previous_state_ == UIState::READY) {
+            ui_manager_->switch_to_state(UIState::READY);
+        } else if (ui_manager_->menu_controller_) {
+            ui_manager_->menu_controller_->return_to_menu();
+        }
+    }
+}
+
+void GrindingUIController::static_demo_timer_cb(lv_timer_t* timer) {
+    auto* controller = static_cast<GrindingUIController*>(lv_timer_get_user_data(timer));
+    if (controller) {
+        controller->demo_timer_cb(timer);
+    }
+}
+
+void GrindingUIController::demo_timer_cb(lv_timer_t* timer) {
+    if (!is_demo_active_ || !ui_manager_) {
+        lv_timer_del(timer);
+        demo_timer_ = nullptr;
+        return;
+    }
+
+    uint32_t elapsed = millis() - demo_start_ms_;
+    constexpr uint32_t kDemoDurationMs = 3200;
+
+    if (elapsed >= kDemoDurationMs) {
+        ui_manager_->grinding_screen.update_current_weight(demo_target_weight_);
+        ui_manager_->grinding_screen.update_progress(100);
+        ui_manager_->grinding_screen.set_completed(true);
+        demo_completed_ = true;
+
+        if (grind_button_) {
+            lv_img_set_src(grind_icon_, LV_SYMBOL_OK);
+            lv_obj_set_style_bg_color(grind_button_, lv_color_hex(THEME_COLOR_SUCCESS), 0);
+        }
+
+        lv_timer_del(timer);
+        demo_timer_ = nullptr;
+
+        if (demo_auto_return_timer_) {
+            lv_timer_del(demo_auto_return_timer_);
+        }
+        demo_auto_return_timer_ = lv_timer_create(static_demo_auto_return_cb, 30000, this);
+        lv_timer_set_repeat_count(demo_auto_return_timer_, 1);
+        return;
+    }
+
+    float t = static_cast<float>(elapsed) / static_cast<float>(kDemoDurationMs);
+    // Smoothstep curve for progress: 3t^2 - 2t^3
+    float fraction = t * t * (3.0f - 2.0f * t);
+    float current_w = demo_target_weight_ * fraction;
+    int progress_pct = static_cast<int>(fraction * 100.0f);
+    if (progress_pct > 100) progress_pct = 100;
+
+    // Simulated flow rate: bell curve peaking around ~2.5 g/s
+    float flow = 6.0f * t * (1.0f - t) * (demo_target_weight_ / (kDemoDurationMs / 1000.0f));
+
+    ui_manager_->grinding_screen.update_current_weight(current_w);
+    ui_manager_->grinding_screen.update_progress(progress_pct);
+    ui_manager_->grinding_screen.add_chart_data_point(current_w, flow, elapsed);
+}
+
+void GrindingUIController::static_demo_auto_return_cb(lv_timer_t* timer) {
+    auto* controller = static_cast<GrindingUIController*>(lv_timer_get_user_data(timer));
+    if (controller && controller->is_demo_active_) {
+        controller->stop_demo();
+    }
 }

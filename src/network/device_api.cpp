@@ -662,6 +662,14 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
         settings.has_mode_icons = true;
         settings.mode_icons = form_bool(value("mode_icons"));
     }
+    if (request->hasParam("grind_layout", true)) {
+        settings.has_grind_layout = true;
+        settings.grind_layout = value("grind_layout").toInt();
+    }
+    if (request->hasParam("disc_color", true)) {
+        settings.has_disc_color = true;
+        settings.disc_color = value("disc_color").toInt();
+    }
 
     if (settings.has_tab_manual || settings.has_tab_single || settings.has_tab_double || settings.has_tab_custom) {
         Preferences* grinder_prefs = hardware_ ? hardware_->get_preferences() : nullptr;
@@ -713,7 +721,9 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                   (screensaver_style == "gaggimate" && valid_local_host(gaggimate_host))) &&
                  (String(settings.clock_position) == "center" || String(settings.clock_position) == "top" || String(settings.clock_position) == "bottom") &&
                  (String(settings.clock_layout) == "horizontal" || String(settings.clock_layout) == "stacked") &&
-                 (strlen(settings.timezone) > 0 && strlen(settings.timezone) < sizeof(settings.timezone));
+                 (strlen(settings.timezone) > 0 && strlen(settings.timezone) < sizeof(settings.timezone)) &&
+                 (!settings.has_grind_layout || (settings.grind_layout >= 0 && settings.grind_layout <= 3)) &&
+                 (!settings.has_disc_color || (settings.disc_color >= 0 && settings.disc_color <= 4));
     for (int i = 0; i < 3 && valid; ++i) {
         valid = std::isfinite(settings.profile_weights[i]) &&
                 profile_controller_->is_weight_valid(settings.profile_weights[i]) &&
@@ -782,6 +792,12 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     }
     if (settings.has_mode_icons) {
         saved = (grinder->putBool("mode_icons", settings.mode_icons) == sizeof(bool)) && saved;
+    }
+    if (settings.has_grind_layout) {
+        saved = (grinder->putInt("grind_layout", settings.grind_layout) == sizeof(int32_t)) && saved;
+    }
+    if (settings.has_disc_color) {
+        saved = (grinder->putInt("disc_color", settings.disc_color) == sizeof(int32_t)) && saved;
     }
 
     auto put_bool = [](const char* name_space, const char* key, bool value) {
@@ -928,6 +944,8 @@ void DeviceApi::refresh_settings_cache() {
     const bool tab_double = grinder ? grinder->getBool("tab_double", true) : true;
     const bool tab_custom = grinder ? grinder->getBool("tab_custom", true) : true;
     const bool mode_icons = grinder ? grinder->getBool("mode_icons", true) : true;
+    const int grind_layout = grinder ? grinder->getInt("grind_layout", 0) : 0;
+    const int disc_color = grinder ? grinder->getInt("disc_color", 0) : 0;
 
     char json[2048];
     snprintf(json, sizeof(json),
@@ -945,6 +963,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"screensaver_startup\":%s,\"screensaver_sleep\":%s,"
              "\"screensaver_idle_timeout_s\":%u,\"screensaver_startup_timeout_s\":%u,"
              "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,"
+             "\"grind_layout\":%d,\"disc_color\":%d,"
              "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"clock_font\":\"%s\",\"timezone\":\"%s\","
              "\"has_custom_screensaver\":%s,\"has_custom_clock_font\":%s,"
              "\"gaggimate_host\":\"%s\"},"
@@ -971,6 +990,8 @@ void DeviceApi::refresh_settings_cache() {
              screensaver_timing.idle_timeout_s, screensaver_timing.startup_timeout_s,
              screensaver_timing.display_off_enabled ? "true" : "false",
              screensaver_timing.display_off_delay_s,
+             grind_layout,
+             disc_color,
              screensaver_style.c_str(), clock_position.c_str(), clock_layout.c_str(), clock_color.c_str(), clock_font.c_str(), timezone.c_str(),
              LittleFS.exists(BLE_IMAGE_FILENAME) ? "true" : "false",
              LittleFS.exists(CLOCK_FONT_FILENAME) ? "true" : "false",

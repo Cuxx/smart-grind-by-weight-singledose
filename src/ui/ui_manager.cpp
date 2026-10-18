@@ -164,6 +164,17 @@ void UIManager::update() {
         }
         current_tab = ready_screen.tab_for_profile_index(prof);
         rebuild_ready_tabs();
+        if (hardware_manager && hardware_manager->get_preferences()) {
+            int saved_layout = hardware_manager->get_preferences()->getInt("grind_layout", 0);
+            if (saved_layout >= 0 && saved_layout <= 2) {
+                grinding_screen.set_layout(static_cast<GrindScreenLayout>(saved_layout));
+            }
+            int saved_color = hardware_manager->get_preferences()->getInt("disc_color", 0);
+            if (saved_color >= 0 && saved_color < NUM_DISC_COLOR_PRESETS) {
+                grinding_screen.set_disc_color_preset(saved_color);
+                menu_screen.update_disc_color_button(DISC_COLOR_PRESETS[saved_color].name);
+            }
+        }
         if (menu_screen.is_visible()) {
             menu_screen.update_brightness_sliders();
             menu_screen.update_bluetooth_startup_toggle();
@@ -179,6 +190,11 @@ void UIManager::update() {
     if (device_api.take_screensaver_preview_request()) {
         if (screen_timeout_controller_) {
             screen_timeout_controller_->trigger_preview();
+        }
+    }
+    if (device_api.take_demo_animation_request()) {
+        if (grinding_controller_) {
+            grinding_controller_->start_demo();
         }
     }
 #endif

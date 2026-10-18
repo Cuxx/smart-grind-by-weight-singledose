@@ -74,6 +74,9 @@ public:
         GRIND_TAB_DOUBLE_TOGGLE,
         GRIND_TAB_CUSTOM_TOGGLE,
         MODE_ICONS_TOGGLE,
+        GRIND_LAYOUT_RADIO_BUTTON,
+        MENU_DEMO_ANIMATION,
+        DISC_COLOR_CYCLE,
         COUNT
     };
 

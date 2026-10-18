@@ -866,6 +866,22 @@ void DeviceWebServer::configure_routes() {
         request->send(response);
     });
 
+    server_.on(AsyncURIMatcher::exact("/api/v1/demo"), HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (!request_origin_allowed(request)) {
+            request->send(403, "application/json", "{\"error\":\"Request origin is not allowed\"}");
+            return;
+        }
+        if ((grind_controller_ && grind_controller_->is_active()) || ota_active_.load() ||
+            (bluetooth_manager_ && bluetooth_manager_->is_transfer_active())) {
+            request->send(409, "application/json", "{\"error\":\"Grinder is busy\"}");
+            return;
+        }
+        device_api.request_demo_animation();
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"status\":\"ok\"}");
+        response->addHeader("Cache-Control", "no-store");
+        request->send(response);
+    });
+
     server_.on(AsyncURIMatcher::exact("/api/v1/ota/prepare"), HTTP_POST, [this](AsyncWebServerRequest* request) {
         const std::lock_guard<std::recursive_mutex> ota_lock(ota_mutex_);
         if (is_ota_active()) {

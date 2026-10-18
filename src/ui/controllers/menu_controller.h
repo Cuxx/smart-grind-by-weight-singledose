@@ -53,6 +53,9 @@ public:
     void handle_grind_tab_double_toggle();
     void handle_grind_tab_custom_toggle();
     void handle_mode_icons_toggle();
+    void handle_grind_layout_radio_button();
+    void handle_demo_animation();
+    void handle_disc_color_cycle();
     void handle_brightness_normal_slider();
     void handle_brightness_normal_slider_released();
     void handle_brightness_screensaver_slider();
@@ -63,6 +66,7 @@ public:
 
     float get_normal_brightness() const;
     float get_screensaver_brightness() const;
+    void return_to_menu();
 
 private:
     UIManager* ui_manager_;
@@ -77,7 +81,6 @@ private:
     void stop_motor_timer();
     void motor_timer_cb(lv_timer_t* timer);
     static void static_motor_timer_cb(lv_timer_t* timer);
-    void return_to_menu();
     void perform_diagnostics_reset();
     void handle_grind_tab_toggle(int which);
 };

@@ -87,6 +87,9 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::SCREENSAVER_SLEEP_TOGGLE, [this](lv_event_t*) { handle_screensaver_sleep_toggle(); });
     EventBridgeLVGL::register_handler(ET::DISPLAY_OFF_TOGGLE, [this](lv_event_t*) { handle_display_off_toggle(); });
     EventBridgeLVGL::register_handler(ET::MODE_ICONS_TOGGLE, [this](lv_event_t*) { handle_mode_icons_toggle(); });
+    EventBridgeLVGL::register_handler(ET::GRIND_LAYOUT_RADIO_BUTTON, [this](lv_event_t*) { handle_grind_layout_radio_button(); });
+    EventBridgeLVGL::register_handler(ET::MENU_DEMO_ANIMATION, [this](lv_event_t*) { handle_demo_animation(); });
+    EventBridgeLVGL::register_handler(ET::DISC_COLOR_CYCLE, [this](lv_event_t*) { handle_disc_color_cycle(); });
 
     // Note: Event registration for menu widgets is done in the page creation functions
     // (menu_screen.cpp) because the menu is created lazily and destroyed on hide.
@@ -937,6 +940,44 @@ void MenuUIController::handle_mode_icons_toggle() {
         prefs->putBool("mode_icons", enabled);
     }
     ui_manager_->ready_screen.set_show_mode_icons(enabled);
+    device_api.mark_settings_dirty();
+}
+
+void MenuUIController::handle_grind_layout_radio_button() {
+    if (!ui_manager_) return;
+
+    lv_obj_t* radio_group = ui_manager_->menu_screen.get_grind_layout_radio_group();
+    if (!radio_group) return;
+
+    int selected_index = radio_button_group_get_selection(radio_group);
+    if (selected_index < 0 || selected_index > 3) return;
+
+    ui_manager_->menu_screen.set_disc_color_button_visible(selected_index == 1 || selected_index == 2);
+
+    GrindScreenLayout new_layout = static_cast<GrindScreenLayout>(selected_index);
+    ui_manager_->grinding_screen.set_layout(new_layout);
+
+    LOG_DEBUG_PRINTLN(selected_index == 0 ? "Grind layout set to ARC" :
+                      selected_index == 1 ? "Grind layout set to DISC (RING)" :
+                      selected_index == 2 ? "Grind layout set to DISC (SOLID)" : "Grind layout set to CHART");
+}
+
+void MenuUIController::handle_demo_animation() {
+    if (!ui_manager_ || !ui_manager_->grinding_controller_) return;
+    ui_manager_->grinding_controller_->start_demo();
+}
+
+void MenuUIController::handle_disc_color_cycle() {
+    if (!ui_manager_) return;
+    int current = ui_manager_->grinding_screen.get_disc_color_preset();
+    int next = (current + 1) % NUM_DISC_COLOR_PRESETS;
+    ui_manager_->grinding_screen.set_disc_color_preset(next);
+    ui_manager_->menu_screen.update_disc_color_button(DISC_COLOR_PRESETS[next].name);
+    auto* hardware = ui_manager_->get_hardware_manager();
+    Preferences* prefs = hardware ? hardware->get_preferences() : nullptr;
+    if (prefs) {
+        prefs->putInt("disc_color", next);
+    }
     device_api.mark_settings_dirty();
 }
 
