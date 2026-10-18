@@ -159,7 +159,11 @@ public:
     bool is_visible() const { return visible; }
     lv_obj_t* get_screen() const { return screen; }
     lv_obj_t* get_tabview() const { return menu; }
+    lv_obj_t* get_current_page() const { return (visible && menu) ? lv_menu_get_cur_main_page(menu) : nullptr; }
+    lv_obj_t* get_info_page() const { return info_page; }
     lv_obj_t* get_diagnostics_page() const { return diagnostics_page; }
+    lv_obj_t* get_bluetooth_page() const { return bluetooth_page; }
+    lv_obj_t* get_network_page() const { return network_page; }
     lv_obj_t* get_cal_button() const { return cal_button; }
     lv_obj_t* get_purge_button() const { return purge_button; }
     lv_obj_t* get_reset_button() const { return reset_button; }

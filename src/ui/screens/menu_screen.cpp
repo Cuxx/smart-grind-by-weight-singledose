@@ -146,6 +146,7 @@ void MenuScreen::create_menu_ui() {
     lv_obj_set_style_pad_gap(main_page, 0, 0);
     lv_obj_set_scroll_dir(main_page, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_scroll_snap_y(main_page, LV_SCROLL_SNAP_NONE);
 
     // Create sub-pages with titles
     info_page = lv_menu_page_create(menu, "Info");
@@ -1512,7 +1513,9 @@ lv_obj_t* MenuScreen::create_toggle_row(lv_obj_t* parent, const char* text, lv_o
 
     *out_toggle = lv_switch_create(row_container);
     lv_obj_set_size(*out_toggle, 80, 40);
-    lv_obj_set_ext_click_area(*out_toggle, 20);
+    lv_obj_set_ext_click_area(*out_toggle, 8);
+    lv_obj_clear_flag(*out_toggle, LV_OBJ_FLAG_PRESS_LOCK);
+    lv_obj_add_flag(*out_toggle, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
     
     return row_container;
 }
@@ -1535,8 +1538,10 @@ lv_obj_t* MenuScreen::create_slider_row(lv_obj_t* parent, const char* text, lv_o
 
     *slider = lv_slider_create(row_container);
     lv_obj_set_size(*slider, 220, 40);
-    lv_obj_set_ext_click_area(*slider, 20);
+    lv_obj_set_ext_click_area(*slider, 10);
     lv_slider_set_range(*slider, min, max);
+    lv_obj_clear_flag(*slider, LV_OBJ_FLAG_PRESS_LOCK);
+    lv_obj_add_flag(*slider, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
     lv_obj_set_style_bg_color(*slider, lv_color_hex(THEME_COLOR_BACKGROUND), LV_PART_MAIN);
     lv_obj_set_style_bg_color(*slider, slider_color, LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(*slider, LV_OPA_TRANSP, LV_PART_KNOB);

@@ -67,6 +67,8 @@ private:
     String password_;
     String hostname_;
     mutable SemaphoreHandle_t settings_mutex_ = nullptr;
+    mutable int cached_rssi_ = 0;
+    mutable uint32_t last_rssi_poll_ms_ = 0;
 
     void load_settings();
     void begin_connection();
