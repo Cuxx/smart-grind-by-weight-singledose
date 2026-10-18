@@ -260,8 +260,11 @@ void ScreensaverController::show() {
         lv_obj_center(image_widget_);
     }
 
+    visible_ = true;
+
     if (style_ == "clock" || style_ == "clock_custom") {
         if (!create_clock()) {
+            visible_ = false;
             lv_obj_delete(overlay_screen_);
             overlay_screen_ = nullptr;
             free_image();
@@ -269,6 +272,7 @@ void ScreensaverController::show() {
         }
     } else if (style_ != "custom") {
         if (!create_builtin(style_)) {
+            visible_ = false;
             lv_obj_delete(overlay_screen_);
             overlay_screen_ = nullptr;
             free_image();
@@ -276,9 +280,8 @@ void ScreensaverController::show() {
         }
     }
 
-    // Load the overlay screen
+    // Load the overlay screen atomically with all widgets fully prepared
     lv_screen_load(overlay_screen_);
-    visible_ = true;
 }
 
 void ScreensaverController::hide() {
