@@ -111,6 +111,9 @@ void GrindingScreenDisc::create() {
 
 void GrindingScreenDisc::show() {
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_HIDDEN);
+    if (disc_obj && !completed_ && !manual_mode) {
+        lv_obj_clear_flag(disc_obj, LV_OBJ_FLAG_HIDDEN);
+    }
     visible = true;
 }
 
@@ -163,9 +166,12 @@ void GrindingScreenDisc::update_current_weight(float weight) {
 void GrindingScreenDisc::update_tare_display() {
     std::snprintf(displayed_weight_text, sizeof(displayed_weight_text), "TARE");
     if (weight_label) lv_label_set_text(weight_label, "TARE");
-    displayed_progress = 0;
+    displayed_progress = -1;
     if (accent_ring) lv_obj_add_flag(accent_ring, LV_OBJ_FLAG_HIDDEN);
     if (disc_obj) {
+        if (!manual_mode && !completed_) {
+            lv_obj_clear_flag(disc_obj, LV_OBJ_FLAG_HIDDEN);
+        }
         lv_obj_set_size(disc_obj, DISC_MIN_DIAMETER_PX, DISC_MIN_DIAMETER_PX);
         lv_obj_align(disc_obj, LV_ALIGN_CENTER, 0, DISC_CENTER_Y_OFFSET);
     }
@@ -182,6 +188,7 @@ void GrindingScreenDisc::update_progress(int percent) {
     displayed_progress = clamped;
 
     if (!completed_ && disc_obj) {
+        lv_obj_clear_flag(disc_obj, LV_OBJ_FLAG_HIDDEN);
         int diameter = DISC_MIN_DIAMETER_PX + (clamped * (DISC_MAX_DIAMETER_PX - DISC_MIN_DIAMETER_PX)) / 100;
         lv_obj_set_size(disc_obj, diameter, diameter);
         lv_obj_align(disc_obj, LV_ALIGN_CENTER, 0, DISC_CENTER_Y_OFFSET);

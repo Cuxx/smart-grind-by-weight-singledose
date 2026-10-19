@@ -143,6 +143,8 @@ void GrindingUIController::on_state_changed(UIState new_state) {
             operation_interlock().release(demo_token_);
             demo_token_ = 0;
         }
+        ui_manager_->grinding_screen.set_completed(false);
+        ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
     }
 
     switch (new_state) {
@@ -551,6 +553,7 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
                 if (weight_sensor) {
                     ui_manager_->grinding_screen.update_current_weight(weight_sensor->get_display_weight());
                 }
+                ui_manager_->grinding_screen.set_completed(false);
                 ui_manager_->grinding_screen.update_progress(0);
                 ui_manager_->switch_to_state(UIState::GRINDING);
 
@@ -923,6 +926,8 @@ void GrindingUIController::stop_demo() {
     }
 
     if (ui_manager_) {
+        ui_manager_->grinding_screen.set_completed(false);
+        ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
         if (demo_previous_state_ == UIState::READY) {
             ui_manager_->switch_to_state(UIState::READY);
         } else if (ui_manager_->menu_controller_) {
