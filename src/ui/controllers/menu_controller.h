@@ -53,6 +53,9 @@ public:
     void handle_grind_tab_double_toggle();
     void handle_grind_tab_custom_toggle();
     void handle_mode_icons_toggle();
+    void handle_grind_layout_radio_button();
+    void handle_demo_animation();
+    void handle_disc_color_cycle();
     void handle_brightness_normal_slider();
     void handle_brightness_normal_slider_released();
     void handle_brightness_screensaver_slider();
@@ -63,12 +66,17 @@ public:
 
     float get_normal_brightness() const;
     float get_screensaver_brightness() const;
+    void return_to_menu();
+    void auto_return_to_ready();
+    void reset_idle_timer();
 
 private:
     UIManager* ui_manager_;
     lv_timer_t* motor_timer_{};
     OperationInterlock::Token motor_test_token_ = 0;
     uint32_t last_status_update_ms_ = 0;
+    uint32_t last_activity_ms_ = 0;
+    bool in_menu_ = false;
     lv_obj_t* last_active_page_ = nullptr;
 
     void perform_factory_reset();
@@ -77,7 +85,6 @@ private:
     void stop_motor_timer();
     void motor_timer_cb(lv_timer_t* timer);
     static void static_motor_timer_cb(lv_timer_t* timer);
-    void return_to_menu();
     void perform_diagnostics_reset();
     void handle_grind_tab_toggle(int which);
 };

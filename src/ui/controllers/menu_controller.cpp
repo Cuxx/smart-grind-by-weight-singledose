@@ -21,6 +21,9 @@
 #include "../components/ui_operations.h"
 #include "../event_bridge_lvgl.h"
 #include "../ui_helpers.h"
+#include "../../hardware/display_manager.h"
+#include "../../hardware/touch_driver.h"
+#include "../../system/display_idle_policy.h"
 #include "../ui_manager.h"
 #include "../screens/menu_screen.h"
 
@@ -87,6 +90,9 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::SCREENSAVER_SLEEP_TOGGLE, [this](lv_event_t*) { handle_screensaver_sleep_toggle(); });
     EventBridgeLVGL::register_handler(ET::DISPLAY_OFF_TOGGLE, [this](lv_event_t*) { handle_display_off_toggle(); });
     EventBridgeLVGL::register_handler(ET::MODE_ICONS_TOGGLE, [this](lv_event_t*) { handle_mode_icons_toggle(); });
+    EventBridgeLVGL::register_handler(ET::GRIND_LAYOUT_RADIO_BUTTON, [this](lv_event_t*) { handle_grind_layout_radio_button(); });
+    EventBridgeLVGL::register_handler(ET::MENU_DEMO_ANIMATION, [this](lv_event_t*) { handle_demo_animation(); });
+    EventBridgeLVGL::register_handler(ET::DISC_COLOR_CYCLE, [this](lv_event_t*) { handle_disc_color_cycle(); });
 
     // Note: Event registration for menu widgets is done in the page creation functions
     // (menu_screen.cpp) because the menu is created lazily and destroyed on hide.
@@ -104,12 +110,45 @@ void MenuUIController::update() {
         return;
     }
 
-    WeightSensor* sensor = ui_manager_->hardware_manager->get_weight_sensor();
+    WeightSensor* sensor = ui_manager_->hardware_manager ? ui_manager_->hardware_manager->get_weight_sensor() : nullptr;
     const uint32_t now = millis();
 
     lv_obj_t* cur_page = ui_manager_->menu_screen.get_current_page();
     const bool page_changed = (cur_page != last_active_page_);
     last_active_page_ = cur_page;
+
+    // Track activity while in the menu
+    if (!in_menu_) {
+        in_menu_ = true;
+        last_activity_ms_ = now;
+    }
+
+    if (page_changed) {
+        last_activity_ms_ = now;
+    }
+
+    auto* display = ui_manager_->hardware_manager ? ui_manager_->hardware_manager->get_display() : nullptr;
+    auto* touch_driver = display ? display->get_touch_driver() : nullptr;
+    if (touch_driver) {
+        uint32_t ms_since_touch = touch_driver->get_ms_since_last_touch();
+        if (ms_since_touch < now) {
+            uint32_t last_touch_timestamp = now - ms_since_touch;
+            if (last_touch_timestamp > last_activity_ms_) {
+                last_activity_ms_ = last_touch_timestamp;
+            }
+        }
+    }
+
+    float weight_delta_g = 0.0f;
+    if (sensor && sensor->get_weight_delta(1000U, &weight_delta_g) &&
+        display_weight_activity_detected(weight_delta_g, USER_WEIGHT_ACTIVITY_THRESHOLD_G)) {
+        last_activity_ms_ = now;
+    }
+
+    if (now - last_activity_ms_ >= USER_MENU_IDLE_TIMEOUT_MS) {
+        auto_return_to_ready();
+        return;
+    }
 
     // Only update status labels for the currently active sub-page, and at a
     // relaxed 1 Hz rate (or immediately upon entering a sub-page).
@@ -250,6 +289,7 @@ void MenuUIController::handle_autotune() {
 }
 
 void MenuUIController::handle_back() {
+    reset_idle_timer();
     if (!ui_manager_) return;
     ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::READY);
@@ -940,6 +980,44 @@ void MenuUIController::handle_mode_icons_toggle() {
     device_api.mark_settings_dirty();
 }
 
+void MenuUIController::handle_grind_layout_radio_button() {
+    if (!ui_manager_) return;
+
+    lv_obj_t* radio_group = ui_manager_->menu_screen.get_grind_layout_radio_group();
+    if (!radio_group) return;
+
+    int selected_index = radio_button_group_get_selection(radio_group);
+    if (selected_index < 0 || selected_index > 3) return;
+
+    ui_manager_->menu_screen.set_disc_color_button_visible(selected_index == 1 || selected_index == 2);
+
+    GrindScreenLayout new_layout = static_cast<GrindScreenLayout>(selected_index);
+    ui_manager_->grinding_screen.set_layout(new_layout);
+
+    LOG_DEBUG_PRINTLN(selected_index == 0 ? "Grind layout set to ARC" :
+                      selected_index == 1 ? "Grind layout set to DISC (RING)" :
+                      selected_index == 2 ? "Grind layout set to DISC (SOLID)" : "Grind layout set to CHART");
+}
+
+void MenuUIController::handle_demo_animation() {
+    if (!ui_manager_ || !ui_manager_->grinding_controller_) return;
+    ui_manager_->grinding_controller_->start_demo();
+}
+
+void MenuUIController::handle_disc_color_cycle() {
+    if (!ui_manager_) return;
+    int current = ui_manager_->grinding_screen.get_disc_color_preset();
+    int next = (current + 1) % NUM_DISC_COLOR_PRESETS;
+    ui_manager_->grinding_screen.set_disc_color_preset(next);
+    ui_manager_->menu_screen.update_disc_color_button(DISC_COLOR_PRESETS[next].name);
+    auto* hardware = ui_manager_->get_hardware_manager();
+    Preferences* prefs = hardware ? hardware->get_preferences() : nullptr;
+    if (prefs) {
+        prefs->putInt("disc_color", next);
+    }
+    device_api.mark_settings_dirty();
+}
+
 void MenuUIController::perform_factory_reset() {
     if (!ui_manager_) return;
 
@@ -1011,9 +1089,33 @@ void MenuUIController::run_motor_test() {
 }
 
 void MenuUIController::return_to_menu() {
+    reset_idle_timer();
     if (!ui_manager_) return;
     ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::MENU);
+}
+
+void MenuUIController::reset_idle_timer() {
+    in_menu_ = false;
+    last_activity_ms_ = 0;
+}
+
+void MenuUIController::auto_return_to_ready() {
+    reset_idle_timer();
+    if (!ui_manager_) return;
+
+    LOG_BLE("[MENU] Inactivity timeout reached (%ums); auto-returning to ready\n",
+            USER_MENU_IDLE_TIMEOUT_MS);
+
+    const int active_profile = ui_manager_->profile_controller
+                                   ? ui_manager_->profile_controller->get_current_profile()
+                                   : 1;
+    const int target_tab = (ui_manager_->current_mode == GrindMode::MANUAL &&
+                            ui_manager_->ready_screen.is_manual_enabled())
+                               ? ui_manager_->ready_screen.manual_tab_index()
+                               : ui_manager_->ready_screen.tab_for_profile_index(active_profile);
+    ui_manager_->set_current_tab(target_tab);
+    ui_manager_->switch_to_state(UIState::READY);
 }
 
 float MenuUIController::get_normal_brightness() const {

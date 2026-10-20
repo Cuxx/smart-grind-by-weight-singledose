@@ -65,6 +65,10 @@ struct DeviceSettingsUpdate {
     bool tab_custom = true;
     bool has_mode_icons = false;
     bool mode_icons = true;
+    bool has_grind_layout = false;
+    int grind_layout = 0;
+    bool has_disc_color = false;
+    int disc_color = 0;
 };
 
 class DeviceApi {
@@ -80,6 +84,8 @@ public:
     void mark_settings_dirty() { settings_cache_dirty_.store(true); }
     bool take_screensaver_preview_request() { return screensaver_preview_requested_.exchange(false); }
     void request_screensaver_preview() { screensaver_preview_requested_.store(true); }
+    bool take_demo_animation_request() { return demo_animation_requested_.exchange(false); }
+    void request_demo_animation() { demo_animation_requested_.store(true); }
 
 private:
     enum class CommandAction : uint8_t {
@@ -130,6 +136,7 @@ private:
     std::atomic<uint32_t> sequence_{0};
     std::atomic<bool> settings_cache_dirty_{false};
     std::atomic<bool> screensaver_preview_requested_{false};
+    std::atomic<bool> demo_animation_requested_{false};
     bool initialized_ = false;
 
     void handle_event(AsyncWebSocket* server, AsyncWebSocketClient* client,

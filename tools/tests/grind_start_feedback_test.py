@@ -56,6 +56,8 @@ struct UIManager {
 struct GrindingUIController {
     UIManager* ui_manager_;
     char error_message_[32]{}; float error_grind_weight_=0; int error_grind_progress_=0;
+    bool is_demo_active_ = false;
+    void stop_demo() {}
     void handle_grind_button();
 };
 ''' + source[start:end] + r'''

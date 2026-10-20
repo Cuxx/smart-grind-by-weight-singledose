@@ -12,6 +12,7 @@ class MenuScreen {
 private:
     lv_obj_t* screen;
     lv_obj_t* menu;
+    lv_obj_t* main_page;
     lv_obj_t* info_page;
     lv_obj_t* bluetooth_page;
     lv_obj_t* network_page;
@@ -74,6 +75,10 @@ private:
     lv_obj_t* screensaver_sleep_toggle;
     lv_obj_t* display_off_toggle;
     lv_obj_t* mode_icons_toggle;
+    lv_obj_t* grind_layout_radio_group;
+    lv_obj_t* grind_layout_demo_button;
+    lv_obj_t* disc_color_button;
+    lv_obj_t* disc_color_label;
     lv_obj_t* purge_button;
     lv_obj_t* reset_button;
     
@@ -138,6 +143,7 @@ public:
     void create(BluetoothManager* bluetooth, GrindController* grind_ctrl, GrindingScreen* grind_screen, class HardwareManager* hw_mgr, DiagnosticsController* diag_ctrl);
     void show();
     void hide();
+    void reset_to_root();
     void update_info(const WeightSensor* weight_sensor, unsigned long uptime_ms, size_t free_heap);
     void update_diagnostics(WeightSensor* weight_sensor);
     void update_ble_status();
@@ -205,6 +211,19 @@ public:
     lv_obj_t* get_screensaver_sleep_toggle() const { return screensaver_sleep_toggle; }
     lv_obj_t* get_display_off_toggle() const { return display_off_toggle; }
     lv_obj_t* get_mode_icons_toggle() const { return mode_icons_toggle; }
+    lv_obj_t* get_grind_layout_radio_group() const { return grind_layout_radio_group; }
+    lv_obj_t* get_grind_layout_demo_button() const { return grind_layout_demo_button; }
+    lv_obj_t* get_disc_color_button() const { return disc_color_button; }
+    void set_disc_color_button_visible(bool visible) {
+        if (disc_color_button) {
+            if (visible) {
+                lv_obj_clear_flag(disc_color_button, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(disc_color_button, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+    }
+    void update_disc_color_button(const char* preset_name);
     void update_screensaver_toggles();
 
 private:

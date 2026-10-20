@@ -256,12 +256,14 @@ void ReadyScreen::create_manual_page(lv_obj_t* parent) {
     lv_obj_set_style_text_align(manual_weight_label, LV_TEXT_ALIGN_CENTER, 0);
 
     manual_scale_status_label = lv_label_create(parent);
-    lv_label_set_text(manual_scale_status_label, "LIVE WEIGHT");
+    lv_label_set_text(manual_scale_status_label, "");
     lv_obj_set_style_text_font(manual_scale_status_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(manual_scale_status_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
     lv_obj_set_style_text_align(manual_scale_status_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    manual_tare_button = create_button(parent, "TARE", lv_color_hex(THEME_COLOR_NEUTRAL), 120, 38, &lv_font_montserrat_16);
+    manual_tare_button = create_button(parent, "TARE", lv_color_hex(THEME_COLOR_NEUTRAL), 200, 56, &lv_font_montserrat_24);
+    lv_obj_set_style_margin_top(manual_tare_button, 8, 0);
+    lv_obj_set_style_margin_bottom(manual_tare_button, 8, 0);
 
     manual_safety_label = lv_label_create(parent);
     lv_obj_set_style_text_font(manual_safety_label, &lv_font_montserrat_16, 0);
@@ -294,7 +296,7 @@ void ReadyScreen::update_manual_scale(float weight, bool available, bool taring)
     char weight_text[16];
     snprintf(weight_text, sizeof(weight_text), SYS_WEIGHT_DISPLAY_FORMAT, weight);
     lv_label_set_text(manual_weight_label, weight_text);
-    lv_label_set_text(manual_scale_status_label, "LIVE WEIGHT");
+    lv_label_set_text(manual_scale_status_label, "");
     lv_obj_clear_state(manual_tare_button, LV_STATE_DISABLED);
 }
 

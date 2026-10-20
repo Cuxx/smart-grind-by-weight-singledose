@@ -86,8 +86,10 @@ Need a simple live readout? Open **Menu → Scale** to jump into a full-screen w
 
 ### Display Modes
 - **Arc Layout**: Clean, minimal arc-based interface
+- **Disc Ring**: Expanding circular disc animation with an emerald halo accent ring framing the weight upon completion
+- **Disc Solid**: Expanding circular disc animation that switches to a solid emerald card upon completion
 - **Nerdy Layout**: Detailed charts showing flow rates and real-time grinding analytics
-- **Switching**: Tap anywhere on grind screen to switch between layouts during grinding
+- **Switching**: Tap the weight display or screen to cycle between all four styles during grinding (Arc → Disc Ring → Disc Solid → Chart), or choose your preferred default in **Menu → Settings → Display** or via the Web UI
 - **Screensaver**: A custom or built-in design can show on startup or when the
   display dims. An optional later panel-off stage protects the AMOLED during
   long idle periods.
@@ -133,6 +135,8 @@ Main Screen (swipe left/right between tabs, up/down to toggle weight/time mode i
     |   |
 	    |   +-- Display
 	    |   |   |-- Mode Icons toggle (icons vs text titles on grind screens)
+	    |   |   |-- Grind Animation selector (Arc, Disc, Chart)
+	    |   |   |-- Demo Animation button (preview animation without running motor)
 	    |   |   |-- Normal brightness slider
 	    |   |   |-- Screensaver brightness slider
 	    |   |   |-- Screensaver startup/idle toggles
