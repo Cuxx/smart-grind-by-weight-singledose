@@ -67,12 +67,16 @@ public:
     float get_normal_brightness() const;
     float get_screensaver_brightness() const;
     void return_to_menu();
+    void auto_return_to_ready();
+    void reset_idle_timer();
 
 private:
     UIManager* ui_manager_;
     lv_timer_t* motor_timer_{};
     OperationInterlock::Token motor_test_token_ = 0;
     uint32_t last_status_update_ms_ = 0;
+    uint32_t last_activity_ms_ = 0;
+    bool in_menu_ = false;
     lv_obj_t* last_active_page_ = nullptr;
 
     void perform_factory_reset();

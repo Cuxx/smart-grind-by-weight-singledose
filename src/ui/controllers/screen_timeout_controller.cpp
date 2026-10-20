@@ -87,6 +87,15 @@ void ScreenTimeoutController::update() {
     const bool should_dim = idle_state != DisplayIdleState::ACTIVE;
     const bool should_turn_off = idle_state == DisplayIdleState::PANEL_OFF;
 
+    if (should_dim && !screen_dimmed_) {
+        if (ui_manager_->state_machine &&
+            ui_manager_->state_machine->get_current_state() == UIState::MENU) {
+            if (ui_manager_->menu_controller_) {
+                ui_manager_->menu_controller_->auto_return_to_ready();
+            }
+        }
+    }
+
     if (should_turn_off && !panel_off_) {
         if (!screen_dimmed_) {
             float dimmed = USER_SCREEN_BRIGHTNESS_DIMMED;

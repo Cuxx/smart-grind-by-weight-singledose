@@ -45,6 +45,8 @@ void MenuScreen::create(BluetoothManager* bluetooth, GrindController* grind_ctrl
 
     visible = false;
     scale_active = false;
+    menu = nullptr;
+    main_page = nullptr;
     scale_page = nullptr;
     scale_weight_label = nullptr;
     scale_tare_button = nullptr;
@@ -143,7 +145,7 @@ void MenuScreen::create_menu_ui() {
     lv_obj_clear_flag(spacer, LV_OBJ_FLAG_SCROLLABLE);
 
     // Create main page last
-    lv_obj_t* main_page = lv_menu_page_create(menu, "Menu");
+    main_page = lv_menu_page_create(menu, "Menu");
     lv_obj_set_layout(main_page, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(main_page, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_all(main_page, 0, 0);
@@ -1050,12 +1052,21 @@ void MenuScreen::show() {
     LOG_BLE("[%lums MENU] Menu screen shown successfully\n", millis());
 }
 
+void MenuScreen::reset_to_root() {
+    if (menu && main_page) {
+        lv_menu_set_page(menu, main_page);
+    }
+    scale_active = false;
+}
+
 void MenuScreen::hide() {
     if (!visible) {
         return; // Already hidden, nothing to do
     }
 
     LOG_BLE("[%lums MENU] Hiding menu screen\n", millis());
+
+    reset_to_root();
 
     // Keep the menu in memory for instant access next time
     // Just hide the screen instead of deleting the menu

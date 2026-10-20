@@ -12,6 +12,7 @@ class MenuScreen {
 private:
     lv_obj_t* screen;
     lv_obj_t* menu;
+    lv_obj_t* main_page;
     lv_obj_t* info_page;
     lv_obj_t* bluetooth_page;
     lv_obj_t* network_page;
@@ -142,6 +143,7 @@ public:
     void create(BluetoothManager* bluetooth, GrindController* grind_ctrl, GrindingScreen* grind_screen, class HardwareManager* hw_mgr, DiagnosticsController* diag_ctrl);
     void show();
     void hide();
+    void reset_to_root();
     void update_info(const WeightSensor* weight_sensor, unsigned long uptime_ms, size_t free_heap);
     void update_diagnostics(WeightSensor* weight_sensor);
     void update_ble_status();

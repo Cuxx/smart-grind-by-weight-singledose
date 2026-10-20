@@ -21,6 +21,9 @@
 #include "../components/ui_operations.h"
 #include "../event_bridge_lvgl.h"
 #include "../ui_helpers.h"
+#include "../../hardware/display_manager.h"
+#include "../../hardware/touch_driver.h"
+#include "../../system/display_idle_policy.h"
 #include "../ui_manager.h"
 #include "../screens/menu_screen.h"
 
@@ -107,12 +110,45 @@ void MenuUIController::update() {
         return;
     }
 
-    WeightSensor* sensor = ui_manager_->hardware_manager->get_weight_sensor();
+    WeightSensor* sensor = ui_manager_->hardware_manager ? ui_manager_->hardware_manager->get_weight_sensor() : nullptr;
     const uint32_t now = millis();
 
     lv_obj_t* cur_page = ui_manager_->menu_screen.get_current_page();
     const bool page_changed = (cur_page != last_active_page_);
     last_active_page_ = cur_page;
+
+    // Track activity while in the menu
+    if (!in_menu_) {
+        in_menu_ = true;
+        last_activity_ms_ = now;
+    }
+
+    if (page_changed) {
+        last_activity_ms_ = now;
+    }
+
+    auto* display = ui_manager_->hardware_manager ? ui_manager_->hardware_manager->get_display() : nullptr;
+    auto* touch_driver = display ? display->get_touch_driver() : nullptr;
+    if (touch_driver) {
+        uint32_t ms_since_touch = touch_driver->get_ms_since_last_touch();
+        if (ms_since_touch < now) {
+            uint32_t last_touch_timestamp = now - ms_since_touch;
+            if (last_touch_timestamp > last_activity_ms_) {
+                last_activity_ms_ = last_touch_timestamp;
+            }
+        }
+    }
+
+    float weight_delta_g = 0.0f;
+    if (sensor && sensor->get_weight_delta(1000U, &weight_delta_g) &&
+        display_weight_activity_detected(weight_delta_g, USER_WEIGHT_ACTIVITY_THRESHOLD_G)) {
+        last_activity_ms_ = now;
+    }
+
+    if (now - last_activity_ms_ >= USER_MENU_IDLE_TIMEOUT_MS) {
+        auto_return_to_ready();
+        return;
+    }
 
     // Only update status labels for the currently active sub-page, and at a
     // relaxed 1 Hz rate (or immediately upon entering a sub-page).
@@ -253,6 +289,7 @@ void MenuUIController::handle_autotune() {
 }
 
 void MenuUIController::handle_back() {
+    reset_idle_timer();
     if (!ui_manager_) return;
     ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::READY);
@@ -1052,9 +1089,33 @@ void MenuUIController::run_motor_test() {
 }
 
 void MenuUIController::return_to_menu() {
+    reset_idle_timer();
     if (!ui_manager_) return;
     ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::MENU);
+}
+
+void MenuUIController::reset_idle_timer() {
+    in_menu_ = false;
+    last_activity_ms_ = 0;
+}
+
+void MenuUIController::auto_return_to_ready() {
+    reset_idle_timer();
+    if (!ui_manager_) return;
+
+    LOG_BLE("[MENU] Inactivity timeout reached (%ums); auto-returning to ready\n",
+            USER_MENU_IDLE_TIMEOUT_MS);
+
+    const int active_profile = ui_manager_->profile_controller
+                                   ? ui_manager_->profile_controller->get_current_profile()
+                                   : 1;
+    const int target_tab = (ui_manager_->current_mode == GrindMode::MANUAL &&
+                            ui_manager_->ready_screen.is_manual_enabled())
+                               ? ui_manager_->ready_screen.manual_tab_index()
+                               : ui_manager_->ready_screen.tab_for_profile_index(active_profile);
+    ui_manager_->set_current_tab(target_tab);
+    ui_manager_->switch_to_state(UIState::READY);
 }
 
 float MenuUIController::get_normal_brightness() const {
