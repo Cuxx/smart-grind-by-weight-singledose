@@ -6,6 +6,19 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+## [1.6.6-beta.1] - 2026-10-20
+
+### Grinding Animation & Display
+- **Expanding Disc Grind Animation**: Added a new Mahlkönig-inspired concentric grinding disc animation with expanding grain flow and live target progress directly on the AMOLED display.
+- **Customizable Color Presets**: Added 5 color schemes for the disc animation (`Emerald`, `Stealth`, `Coffee`, `Navy`, `Crimson`), selectable on the touchscreen under **Menu → Display** and in the web interface under **Settings → Display & screensaver**.
+- **Interactive Animation Demo Mode**: Added a live demo button under **Menu → Display** allowing users to test and preview all grinding animations with simulated coffee flow and live weight progression without running the motor.
+- **Grind Screen Completion State Fix**: Ensured the grinding screen completion state is reliably cleared after exiting demo mode so that live grinds always render the active animation.
+
+### Menu & Navigation
+- **Inactivity Auto-Return**: Added an automatic 60-second inactivity timeout in the menu (`USER_MENU_IDLE_TIMEOUT_MS = 60000`). If no touch or scale activity occurs for 60 seconds, the grinder cleanly returns to the ready screen on the active profile tab.
+- **Screensaver Menu Protection**: If the screensaver activates or the display powers off while in the menu, the UI automatically returns to the ready screen first. Tapping the screen or placing a cup wakes the grinder directly ready to grind.
+- **Menu Reset on Exit**: Exiting the menu (via root back chevron, idle timeout, or screensaver) resets navigation back to the top-level main page.
+
 ## [1.6.5] - 2026-10-17
 
 ### Display & Mode Icons
@@ -476,3 +489,4 @@ fixes described above.
 [1.6.3]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.3
 [1.6.4]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.4
 [1.6.5]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.5
+[1.6.6-beta.1]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.6-beta.1
