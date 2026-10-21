@@ -6,6 +6,8 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+## [1.6.6-beta.2] - 2026-10-21
+
 ### Diagnostics & Calibration
 - **Diagnostics Screen Live Refresh**: Removed 1-second throttling on the Diagnostics page so standard deviation (`Std Dev (g)`, `Std Dev (ADC)`) and noise status update live at the native display/sampling rate (~80 Hz).
 - **Diagnostics Submenu Scoping & Optimization**: Ensured high-frequency sensor updates only run while actively viewing the Diagnostics submenu (`is_diagnostics_page_active()`), keeping the main menu list and other submenus completely smooth. Added dirty-checking to diagnostic labels to avoid layout invalidations and keep scrolling responsive.
@@ -495,3 +497,4 @@ fixes described above.
 [1.6.4]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.4
 [1.6.5]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.5
 [1.6.6-beta.1]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.6-beta.1
+[1.6.6-beta.2]: https://github.com/Cuxx/smart-grind-by-weight-singledose/releases/tag/v1.6.6-beta.2
