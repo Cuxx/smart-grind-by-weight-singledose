@@ -56,7 +56,9 @@ Access **Menu → Grind Settings** to configure:
 - **Purging** *(Advanced)*: Control how the grinder saturates itself before weight-mode grinding
   - **Prime mode**: Keeps all coffee and grinds continuously in a single smooth run directly to the target weight without intermediate motor stopping
   - **Purge mode** (default): Prompts you to discard stale grinds before continuing when coffee has aged past the freshness window
-  - **Amount slider**: Configure purge/prime amount (0.1g-5.0g, default 1.0g). Amount is a minimum target; actual output will be slightly higher.
+  - **Amount and freshness**: In Purge mode, configure the discard amount
+    (0.1g-5.0g, default 1.0g) and freshness window. These controls are hidden
+    in Prime mode, which continues directly to the target.
   - **"Keep purge grinds from now on" checkbox**: Appears during purge confirmation - switches to Prime mode when checked
 
   *Explanation:* The time between motor start and grinds hitting the cup (grind latency) is used to predict the coast time (how long grinds will keep coming after the motor is disengaged). Purging clears stale coffee and saturates the grinder with fresh grounds, ensuring accurate latency detection. If you prefer to keep all coffee without manual intervention, select Prime mode.
@@ -231,6 +233,8 @@ grinder.
 - **Custom image**: Upload a normal photo from the web interface; conversion
   happens in the browser before it is sent to the grinder.
 - **Clock screensavers**:
+  - The WebUI shows clock layout, position, font, colour and timezone controls
+    only when either Clock design is selected.
   - **Clock (Black)**: Large time display on an AMOLED solid black background. When Wi-Fi is unavailable or NTP time has not synchronized, the screen stays cleanly black.
   - **Clock (Custom)**: Overlays the large clock on your uploaded custom image. When unsynchronized, it displays the image cleanly without the time.
   - **Clock Layout**: Choose between `Horizontal (HH:MM)` using an 80 px Montserrat Bold font with a stationary colon, or `Stacked (HH / MM)` using a prominent 160 px Montserrat Bold font.
@@ -241,7 +245,8 @@ grinder.
   - **Timezone**: Set your local POSIX TZ string (default `CET-1CEST,M3.5.0,M10.5.0/3`) or tap `Auto` to detect it from your browser.
   - **Burn-in protection**: Periodically applies subtle 1–2 px subpixel shifting every minute to protect the AMOLED screen.
 - **GaggiMate status**: Enter the machine hostname (normally
-  `gaggimate.local`) or its IP address. While both devices are on the same
+  `gaggimate.local`) or its IP address; the host field appears only when the
+  GaggiMate design is selected. While both devices are on the same
   Wi-Fi network, the screensaver shows temperature and readiness, then live
   shot time, phase, pressure and flow during an extraction. It uses
   GaggiMate's existing WebSocket API and falls back to its compact HTTP status
