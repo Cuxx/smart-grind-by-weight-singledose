@@ -635,17 +635,17 @@ void MenuScreen::create_display_page(lv_obj_t* parent) {
     }
 
     create_description_label(parent, "Grind screen animation style.");
-    const char* layout_modes[] = {"Arc", "Disc Ring", "Disc Solid", "Chart"};
+    const char* layout_modes[] = {"Arc", "Disc Ring", "Disc Solid", "Chart", "Bean Flow", "Grinder Rotor"};
     int initial_layout = 0;
     Preferences* main_prefs = hardware_manager ? hardware_manager->get_preferences() : nullptr;
     if (main_prefs) {
         initial_layout = main_prefs->getInt("grind_layout", 0);
-        if (initial_layout < 0 || initial_layout > 3) initial_layout = 0;
+        if (initial_layout < 0 || initial_layout > static_cast<int>(GrindScreenLayout::GRINDER_ROTOR)) initial_layout = 0;
     }
     grind_layout_radio_group = create_radio_button_group(
         parent,
         layout_modes,
-        4,
+        6,
         LV_FLEX_FLOW_ROW_WRAP,
         initial_layout,
         126, 38,
@@ -1493,7 +1493,7 @@ void MenuScreen::update_screensaver_toggles() {
 
     if (grind_layout_radio_group) {
         int current_layout_idx = main_prefs ? main_prefs->getInt("grind_layout", 0) : 0;
-        if (current_layout_idx < 0 || current_layout_idx > 3) current_layout_idx = 0;
+        if (current_layout_idx < 0 || current_layout_idx > static_cast<int>(GrindScreenLayout::GRINDER_ROTOR)) current_layout_idx = 0;
         radio_button_group_set_selection(grind_layout_radio_group, current_layout_idx);
         set_disc_color_button_visible(current_layout_idx == 1 || current_layout_idx == 2);
     }

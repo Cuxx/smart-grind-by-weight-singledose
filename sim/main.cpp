@@ -7,6 +7,8 @@
 #include "ui/screens/grinding_screen_arc.h"
 #include "ui/screens/grinding_screen_chart.h"
 #include "ui/screens/grinding_screen_disc.h"
+#include "ui/screens/grinding_screen_bean_flow.h"
+#include "ui/screens/grinding_screen_rotor.h"
 #include "ui/screens/ready_screen.h"
 
 #include <algorithm>
@@ -41,12 +43,14 @@ constexpr uint64_t kChartPixelBudget = 3500000;
 constexpr uint64_t kSwipePixelBudget = 1000000;
 constexpr uint32_t kSwipeDurationBudgetMs = 300;
 
-enum class SimGrindLayout { ARC = 0, DISC_RING = 1, DISC_SOLID = 2, CHART = 3, DISC = DISC_RING };
+enum class SimGrindLayout { ARC = 0, DISC_RING = 1, DISC_SOLID = 2, CHART = 3, BEAN_FLOW = 4, GRINDER_ROTOR = 5, DISC = DISC_RING };
 
 ReadyScreen ready_screen;
 GrindingScreenArc arc_screen;
 GrindingScreenChart chart_screen;
 GrindingScreenDisc disc_screen;
+GrindingScreenBeanFlow bean_flow_screen;
+GrindingScreenRotor rotor_screen;
 lv_obj_t* grind_button = nullptr;
 lv_obj_t* grind_icon = nullptr;
 lv_obj_t* pulse_button = nullptr;
@@ -174,6 +178,8 @@ void update_ready_screen_profiles() {
     arc_screen.set_time_mode(current_mode == GrindMode::TIME);
     chart_screen.set_time_mode(current_mode == GrindMode::TIME);
     disc_screen.set_time_mode(current_mode == GrindMode::TIME);
+    bean_flow_screen.set_time_mode(current_mode == GrindMode::TIME);
+    rotor_screen.set_time_mode(current_mode == GrindMode::TIME);
 }
 
 void cycle_single_target() {
@@ -196,7 +202,9 @@ void update_menu_labels() {
     if (anim_btn_label) {
         const char* anim_name = (active_layout == SimGrindLayout::DISC_RING) ? "DISC Ring (Halo)" :
                                 (active_layout == SimGrindLayout::DISC_SOLID) ? "DISC Solid (Green)" :
-                                (active_layout == SimGrindLayout::CHART) ? "CHART (Graph)" : "ARC (Gauge)";
+                                (active_layout == SimGrindLayout::CHART) ? "CHART (Graph)" :
+                                (active_layout == SimGrindLayout::BEAN_FLOW) ? "BEAN FLOW" :
+                                (active_layout == SimGrindLayout::GRINDER_ROTOR) ? "GRINDER ROTOR" : "ARC (Gauge)";
         char buf[64];
         snprintf(buf, sizeof(buf), "Layout: %s", anim_name);
         lv_label_set_text(anim_btn_label, buf);
@@ -255,6 +263,8 @@ void open_menu() {
     arc_screen.hide();
     disc_screen.hide();
     chart_screen.hide();
+    bean_flow_screen.hide();
+    rotor_screen.hide();
     if (grind_button) {
         lv_obj_add_flag(grind_button, LV_OBJ_FLAG_HIDDEN);
     }
@@ -331,6 +341,10 @@ void show_ready() {
     arc_screen.hide();
     disc_screen.hide();
     chart_screen.hide();
+    bean_flow_screen.hide();
+    rotor_screen.hide();
+    bean_flow_screen.set_activity(GrindScreenActivity::STOPPED);
+    rotor_screen.set_activity(GrindScreenActivity::STOPPED);
     disc_screen.set_completed(false);
     arc_screen.set_manual_mode(false);
     disc_screen.set_manual_mode(false);
@@ -345,6 +359,8 @@ void show_active_grind_screen() {
     arc_screen.hide();
     disc_screen.hide();
     chart_screen.hide();
+    bean_flow_screen.hide();
+    rotor_screen.hide();
     if (sim_menu_screen) {
         lv_obj_add_flag(sim_menu_screen, LV_OBJ_FLAG_HIDDEN);
     }
@@ -358,6 +374,16 @@ void show_active_grind_screen() {
         }
     } else if (active_layout == SimGrindLayout::CHART) {
         chart_screen.show();
+        if (!grinding && !settling && !ready_screen.is_visible()) {
+            if (grind_button) lv_obj_clear_flag(grind_button, LV_OBJ_FLAG_HIDDEN);
+        }
+    } else if (active_layout == SimGrindLayout::BEAN_FLOW) {
+        bean_flow_screen.show();
+        if (!grinding && !settling && !ready_screen.is_visible()) {
+            if (grind_button) lv_obj_clear_flag(grind_button, LV_OBJ_FLAG_HIDDEN);
+        }
+    } else if (active_layout == SimGrindLayout::GRINDER_ROTOR) {
+        rotor_screen.show();
         if (!grinding && !settling && !ready_screen.is_visible()) {
             if (grind_button) lv_obj_clear_flag(grind_button, LV_OBJ_FLAG_HIDDEN);
         }
@@ -376,26 +402,38 @@ void reset_grind_views() {
     arc_screen.update_profile_name(active_profile_name);
     chart_screen.update_profile_name(active_profile_name);
     disc_screen.update_profile_name(active_profile_name);
+    bean_flow_screen.update_profile_name(active_profile_name);
+    rotor_screen.update_profile_name(active_profile_name);
 
     if (manual_grinding) {
         arc_screen.update_target_weight_text("");
         chart_screen.update_target_weight_text("Single Dose");
         disc_screen.update_target_weight_text("");
+        bean_flow_screen.update_target_weight_text("");
+        rotor_screen.update_target_weight_text("");
     } else if (current_mode == GrindMode::TIME) {
         arc_screen.update_target_time(active_target);
         chart_screen.update_target_time(active_target);
         disc_screen.update_target_time(active_target);
+        bean_flow_screen.update_target_time(active_target);
+        rotor_screen.update_target_time(active_target);
     } else {
         arc_screen.update_target_weight(active_target);
         chart_screen.update_target_weight(active_target);
         disc_screen.update_target_weight(active_target);
+        bean_flow_screen.update_target_weight(active_target);
+        rotor_screen.update_target_weight(active_target);
     }
 
     arc_screen.update_current_weight(0.0f);
     chart_screen.update_current_weight(0.0f);
     disc_screen.update_current_weight(0.0f);
+    bean_flow_screen.update_current_weight(0.0f);
+    rotor_screen.update_current_weight(0.0f);
     arc_screen.update_progress(0);
     disc_screen.update_progress(0);
+    bean_flow_screen.update_progress(0);
+    rotor_screen.update_progress(0);
     chart_screen.reset_chart_data();
     sim_log("reset_grind_views finished\n");
 }
@@ -438,6 +476,10 @@ void start_grind() {
     last_update_ms = grind_started_ms;
     arc_screen.set_manual_mode(manual_grinding);
     disc_screen.set_manual_mode(manual_grinding);
+    bean_flow_screen.set_manual_mode(manual_grinding);
+    rotor_screen.set_manual_mode(manual_grinding);
+    bean_flow_screen.set_activity(GrindScreenActivity::ACTIVE);
+    rotor_screen.set_activity(GrindScreenActivity::ACTIVE);
     reset_grind_views();
     show_active_grind_screen();
     set_grind_button(LV_SYMBOL_STOP, THEME_COLOR_PRIMARY);
@@ -452,6 +494,10 @@ void toggle_layout() {
         active_layout = SimGrindLayout::DISC_SOLID;
     } else if (active_layout == SimGrindLayout::DISC_SOLID) {
         active_layout = SimGrindLayout::CHART;
+    } else if (active_layout == SimGrindLayout::CHART) {
+        active_layout = SimGrindLayout::BEAN_FLOW;
+    } else if (active_layout == SimGrindLayout::BEAN_FLOW) {
+        active_layout = SimGrindLayout::GRINDER_ROTOR;
     } else {
         active_layout = SimGrindLayout::ARC;
     }
@@ -461,7 +507,9 @@ void toggle_layout() {
     update_menu_labels();
     set_status(active_layout == SimGrindLayout::DISC_RING ? "DISC RING VIEW" :
                active_layout == SimGrindLayout::DISC_SOLID ? "DISC SOLID VIEW" :
-               active_layout == SimGrindLayout::CHART ? "CHART VIEW" : "ARC VIEW");
+               active_layout == SimGrindLayout::CHART ? "CHART VIEW" :
+               active_layout == SimGrindLayout::BEAN_FLOW ? "BEAN FLOW VIEW" :
+               active_layout == SimGrindLayout::GRINDER_ROTOR ? "GRINDER ROTOR VIEW" : "ARC VIEW");
 }
 
 void tare() {
@@ -469,6 +517,8 @@ void tare() {
     arc_screen.update_tare_display();
     disc_screen.update_tare_display();
     chart_screen.update_tare_display();
+    bean_flow_screen.update_tare_display();
+    rotor_screen.update_tare_display();
     if (ready_screen.is_visible()) {
         ready_screen.update_manual_scale(0.0f, true, false);
     }
@@ -495,6 +545,8 @@ void grind_button_event(lv_event_t* e) {
         grinding = false;
         settling = false;
         manual_grinding = false;
+        bean_flow_screen.set_activity(GrindScreenActivity::STOPPED);
+        rotor_screen.set_activity(GrindScreenActivity::STOPPED);
         if (demo_mode) {
             demo_mode = false;
             open_menu();
@@ -778,12 +830,16 @@ void update_mock_grind() {
             arc_screen.update_target_weight_text(elapsed_text);
             disc_screen.update_target_weight_text(elapsed_text);
             chart_screen.update_target_weight_text(elapsed_text);
+            bean_flow_screen.update_target_weight_text(elapsed_text);
+            rotor_screen.update_target_weight_text(elapsed_text);
         } else if (current_mode == GrindMode::TIME) {
             if (elapsed_s >= active_target) {
                 grinding = false;
                 settling = false;
                 flow_gps = 0.0f;
                 disc_screen.set_completed(true);
+                bean_flow_screen.set_activity(GrindScreenActivity::STOPPED);
+                rotor_screen.set_activity(GrindScreenActivity::STOPPED);
                 if (active_layout == SimGrindLayout::DISC_RING || active_layout == SimGrindLayout::DISC_SOLID) {
                     if (grind_button) lv_obj_add_flag(grind_button, LV_OBJ_FLAG_HIDDEN);
                 } else {
@@ -794,6 +850,8 @@ void update_mock_grind() {
         } else if (weight_g >= active_target - 0.45f) {
             grinding = false;
             settling = true;
+            bean_flow_screen.set_activity(GrindScreenActivity::SETTLING);
+            rotor_screen.set_activity(GrindScreenActivity::SETTLING);
             set_status("SETTLING");
         }
     } else if (settling) {
@@ -804,6 +862,8 @@ void update_mock_grind() {
             flow_gps = 0.0f;
             weight_g = active_target;
             disc_screen.set_completed(true);
+            bean_flow_screen.set_activity(GrindScreenActivity::STOPPED);
+            rotor_screen.set_activity(GrindScreenActivity::STOPPED);
             if (active_layout == SimGrindLayout::DISC_RING || active_layout == SimGrindLayout::DISC_SOLID) {
                 if (grind_button) lv_obj_add_flag(grind_button, LV_OBJ_FLAG_HIDDEN);
             } else {
@@ -824,9 +884,13 @@ void update_mock_grind() {
 
     arc_screen.update_current_weight(weight_g);
     disc_screen.update_current_weight(weight_g);
+    bean_flow_screen.update_current_weight(weight_g);
+    rotor_screen.update_current_weight(weight_g);
     chart_screen.update_current_weight(weight_g);
     arc_screen.update_progress(progress);
     disc_screen.update_progress(progress);
+    bean_flow_screen.update_progress(progress);
+    rotor_screen.update_progress(progress);
     chart_screen.add_chart_data_point(weight_g, flow_gps, current_ms);
 }
 
@@ -873,6 +937,7 @@ int main(int argc, char** argv) {
     const bool benchmark = has_arg(argc, argv, "--benchmark");
     const bool swipe_benchmark = has_arg(argc, argv, "--swipe-benchmark");
     const bool manual_smoke = has_arg(argc, argv, "--manual-smoke");
+    const bool layout_smoke = has_arg(argc, argv, "--layout-smoke");
     const bool no_icons = has_arg(argc, argv, "--no-icons") ||
                           has_arg(argc, argv, "--text-labels") ||
                           has_arg(argc, argv, "--text-mode");
@@ -907,7 +972,7 @@ int main(int argc, char** argv) {
     }
 
     simulator_window = lv_windows_get_display_window_handle(display);
-    if (smoke_test || benchmark || swipe_benchmark || manual_smoke) {
+    if (smoke_test || benchmark || swipe_benchmark || manual_smoke || layout_smoke) {
         ShowWindow(simulator_window, SW_HIDE);
     }
     lv_display_add_event_cb(display, display_metrics_event, LV_EVENT_ALL, nullptr);
@@ -927,6 +992,8 @@ int main(int argc, char** argv) {
     ready_screen.set_manual_tare_handler([](lv_event_t*) { tare(); });
     arc_screen.create();
     disc_screen.create();
+    bean_flow_screen.create();
+    rotor_screen.create();
     if (dark_gray) {
         disc_screen.set_color_preset(1);
     } else if (espresso_color) {
@@ -953,6 +1020,8 @@ int main(int argc, char** argv) {
     if (arc_screen.get_screen()) lv_obj_add_event_cb(arc_screen.get_screen(), screen_click_cb, LV_EVENT_CLICKED, nullptr);
     if (disc_screen.get_screen()) lv_obj_add_event_cb(disc_screen.get_screen(), screen_click_cb, LV_EVENT_CLICKED, nullptr);
     if (chart_screen.get_screen()) lv_obj_add_event_cb(chart_screen.get_screen(), screen_click_cb, LV_EVENT_CLICKED, nullptr);
+    if (bean_flow_screen.get_screen()) lv_obj_add_event_cb(bean_flow_screen.get_screen(), screen_click_cb, LV_EVENT_CLICKED, nullptr);
+    if (rotor_screen.get_screen()) lv_obj_add_event_cb(rotor_screen.get_screen(), screen_click_cb, LV_EVENT_CLICKED, nullptr);
     create_sim_menu_screen();
     if (ready_screen.get_menu_tab()) {
         lv_obj_add_flag(ready_screen.get_menu_tab(), LV_OBJ_FLAG_CLICKABLE);
@@ -1006,6 +1075,9 @@ int main(int argc, char** argv) {
     bool mode_key_down = false;
     bool num_key_down[6] = {false};
     bool manual_stop_sent = false;
+    int layout_smoke_steps = 0;
+    bool layout_smoke_bean_seen = false;
+    bool layout_smoke_rotor_seen = false;
 
     while (IsWindow(window)) {
         if (ready_screen.is_visible()) {
@@ -1022,11 +1094,42 @@ int main(int argc, char** argv) {
             swipe_started = true;
         }
 
-        if ((smoke_test || benchmark) && !smoke_scenario_started && now_ms() - smoke_started_ms > 100) {
+        if ((smoke_test || benchmark || layout_smoke) && !smoke_scenario_started && now_ms() - smoke_started_ms > 100) {
             lv_tabview_set_act(ready_screen.get_tabview(), ReadyScreen::PROFILE_TAB_START_INDEX, LV_ANIM_OFF);
             start_grind();
             smoke_scenario_started = true;
             reset_render_metrics();
+        }
+
+        if (layout_smoke && smoke_scenario_started && layout_smoke_steps < 5 &&
+            now_ms() - smoke_started_ms > static_cast<uint32_t>(260 + layout_smoke_steps * 220)) {
+            toggle_layout();
+            if ((active_layout == SimGrindLayout::DISC_RING || active_layout == SimGrindLayout::DISC_SOLID) &&
+                !disc_screen.is_visible()) {
+                std::fprintf(stderr, "Disc layout was not visible.\n");
+                ExitProcess(8);
+            }
+            if (active_layout == SimGrindLayout::CHART && !chart_screen.is_visible()) {
+                std::fprintf(stderr, "Chart layout was not visible.\n");
+                ExitProcess(9);
+            }
+            if (active_layout == SimGrindLayout::BEAN_FLOW) {
+                layout_smoke_bean_seen = bean_flow_screen.is_visible();
+            }
+            if (active_layout == SimGrindLayout::GRINDER_ROTOR) {
+                layout_smoke_rotor_seen = rotor_screen.is_visible();
+            }
+            ++layout_smoke_steps;
+        }
+
+        if (layout_smoke && layout_smoke_steps == 5 && now_ms() - smoke_started_ms > 1450) {
+            if (!layout_smoke_bean_seen || !layout_smoke_rotor_seen || !grinding || weight_g <= 0.0f) {
+                std::fprintf(stderr, "Grind layout scenario did not advance through every layout.\n");
+                ExitProcess(10);
+            }
+            std::puts("[layout-smoke] all six grind layouts advanced");
+            std::fflush(stdout);
+            ExitProcess(0);
         }
 
         if (manual_smoke && !smoke_scenario_started && now_ms() - smoke_started_ms > 100) {

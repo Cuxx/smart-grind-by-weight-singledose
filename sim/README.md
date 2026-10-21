@@ -5,7 +5,7 @@ Windows window. It is intended for fast UI and grind-flow development without
 flashing or connecting a development board.
 
 The simulated panel has the same 280 x 456 logical resolution as the Waveshare
-display. It currently runs the production Ready screen, both production
+display. It currently runs the production Ready screen, all six production
 Grinding screen layouts, and the production Play/Stop/Complete control. A
 deterministic grinder/load-cell model supplies rising weight, changing flow,
 motor run-on, settling, and completion data.
@@ -36,7 +36,7 @@ Use the on-screen circular button to start, stop, acknowledge, and restart the
 grind flow. The desktop-only keyboard shortcuts are kept outside the simulated
 panel UI:
 
-- `V`: switch between the production arc and chart grinding layouts
+- `V`: cycle the production Arc, Disc Ring, Disc Solid, Chart, Bean Flow and Grinder Rotor layouts
 - `T`: tare the simulated load cell
 
 ## Automated smoke test

@@ -166,7 +166,7 @@ void UIManager::update() {
         rebuild_ready_tabs();
         if (hardware_manager && hardware_manager->get_preferences()) {
             int saved_layout = hardware_manager->get_preferences()->getInt("grind_layout", 0);
-            if (saved_layout >= 0 && saved_layout <= static_cast<int>(GrindScreenLayout::NERDY_CHART)) {
+            if (saved_layout >= 0 && saved_layout <= static_cast<int>(GrindScreenLayout::GRINDER_ROTOR)) {
                 grinding_screen.set_layout(static_cast<GrindScreenLayout>(saved_layout));
             }
             int saved_color = hardware_manager->get_preferences()->getInt("disc_color", 0);
