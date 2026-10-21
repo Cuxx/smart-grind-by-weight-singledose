@@ -16,7 +16,7 @@ line. Earlier release history remains available in the original project's
 ## [1.6.6-beta.1] - 2026-10-20
 
 ### Grinding Animation & Display
-- **Expanding Disc Grind Animation**: Added a new Mahlkönig-inspired concentric grinding disc animation with expanding grain flow and live target progress directly on the AMOLED display.
+- **Expanding Disc Grind Animation**: Added a new concentric grinding disc animation with expanding grain flow and live target progress directly on the AMOLED display.
 - **Customizable Color Presets**: Added 5 color schemes for the disc animation (`Emerald`, `Stealth`, `Coffee`, `Navy`, `Crimson`), selectable on the touchscreen under **Menu → Display** and in the web interface under **Settings → Display & screensaver**.
 - **Interactive Animation Demo Mode**: Added a live demo button under **Menu → Display** allowing users to test and preview all grinding animations with simulated coffee flow and live weight progression without running the motor.
 - **Grind Screen Completion State Fix**: Ensured the grinding screen completion state is reliably cleared after exiting demo mode so that live grinds always render the active animation.
