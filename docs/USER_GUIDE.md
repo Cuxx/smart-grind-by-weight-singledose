@@ -242,7 +242,9 @@ grinder.
   - **Clock Position**: Choose between `Center`, `Top`, or `Bottom`.
   - **Clock Colour**: Choose any custom HEX colour or select from AMOLED-tailored presets (White, Amber, Warm Gold, Ice Cyan, Mint, Coral) with zero rendering overhead.
   - **Test screensaver**: Tap **Test screensaver** in the web interface to instantly activate the screensaver on the physical display. Touching the panel or changing weight on the scale restores normal operation.
-  - **Timezone**: Set your local POSIX TZ string (default `CET-1CEST,M3.5.0,M10.5.0/3`) or tap `Auto` to detect it from your browser.
+  - **Timezone**: Select your city or region from the WebUI list, or tap
+    `Auto` to use the browser timezone. The existing POSIX rule is available
+    under **Advanced** for unsupported regions and custom setups.
   - **Burn-in protection**: Periodically applies subtle 1–2 px subpixel shifting every minute to protect the AMOLED screen.
 - **GaggiMate status**: Enter the machine hostname (normally
   `gaggimate.local`) or its IP address; the host field appears only when the

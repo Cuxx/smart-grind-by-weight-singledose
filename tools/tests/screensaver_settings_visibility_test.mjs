@@ -28,6 +28,7 @@ const cards = ['minimal', 'clock', 'clock_custom', 'gaggimate'].map(style => ({
 }));
 const context = vm.createContext({
   state: {screensaverStyle: 'minimal'},
+  syncTimezoneSelection() {},
   $: id => controls.get(id),
   document: {querySelectorAll: selector => selector === '.stylecard' ? cards : []},
 });
