@@ -23,6 +23,10 @@ purging, automation, logging, swipe, Bluetooth startup, brightness and screensav
 settings. It retains the timing/settings-service failure results. Motor latency
 and coast ratio only change their running value after a successful storage write.
 The cached settings and touchscreen runtime refresh run even after partial writes.
+The touchscreen brightness sliders persist their value both on a normal touch
+release and when the touch leaves the slider. This prevents the live display
+preview from diverging from the NVS value returned by the WebUI after a refresh.
+Both interfaces use the same nearest-percent conversion for stored brightness.
 
 ## Save completion API
 

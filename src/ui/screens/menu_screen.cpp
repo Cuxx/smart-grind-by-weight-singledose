@@ -598,11 +598,15 @@ void MenuScreen::create_display_page(lv_obj_t* parent) {
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::BRIGHTNESS_NORMAL_SLIDER)));
         lv_obj_add_event_cb(brightness_normal_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_RELEASED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::BRIGHTNESS_NORMAL_SLIDER_RELEASED)));
+        lv_obj_add_event_cb(brightness_normal_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_PRESS_LOST,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::BRIGHTNESS_NORMAL_SLIDER_RELEASED)));
     }
     if (brightness_screensaver_slider) {
         lv_obj_add_event_cb(brightness_screensaver_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::BRIGHTNESS_SCREENSAVER_SLIDER)));
         lv_obj_add_event_cb(brightness_screensaver_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_RELEASED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::BRIGHTNESS_SCREENSAVER_SLIDER_RELEASED)));
+        lv_obj_add_event_cb(brightness_screensaver_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_PRESS_LOST,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::BRIGHTNESS_SCREENSAVER_SLIDER_RELEASED)));
     }
 
@@ -1346,8 +1350,8 @@ void MenuScreen::update_brightness_sliders() {
     prefs.end();
     
     // Convert from 0.0-1.0 to 15-100 range
-    int normal_percent = (int)(normal_brightness * 100);
-    int screensaver_percent = (int)(screensaver_brightness * 100);
+    int normal_percent = static_cast<int>(normal_brightness * 100.0f + 0.5f);
+    int screensaver_percent = static_cast<int>(screensaver_brightness * 100.0f + 0.5f);
     
     // Ensure minimum 15%
     if (normal_percent < HW_DISPLAY_MINIMAL_BRIGHTNESS_PERCENT) normal_percent = HW_DISPLAY_MINIMAL_BRIGHTNESS_PERCENT;
