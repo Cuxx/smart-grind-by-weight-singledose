@@ -1109,35 +1109,28 @@ void MenuScreen::update_info(const WeightSensor* weight_sensor, unsigned long up
 }
 
 void MenuScreen::update_diagnostics(WeightSensor* weight_sensor) {
-    if (!visible || !diagnostics_controller) return;
+    if (!visible || !diagnostics_controller || !weight_sensor) return;
 
-    // Update standard deviations only every 1 second to reduce noise
-    static unsigned long last_std_dev_update = 0;
-    unsigned long now = millis();
-    if (now - last_std_dev_update >= 1000) {  // Update every 1 second
-        last_std_dev_update = now;
+    // Get standard deviations using same window as grind control precision settling (500ms window)
+    float std_dev_g = weight_sensor->get_standard_deviation_g(GRIND_SCALE_PRECISION_SETTLING_TIME_MS);
+    int32_t std_dev_adc = weight_sensor->get_standard_deviation_adc(GRIND_SCALE_PRECISION_SETTLING_TIME_MS);
 
-        // Get standard deviations using same window as grind control precision settling
-        float std_dev_g = weight_sensor->get_standard_deviation_g(GRIND_SCALE_PRECISION_SETTLING_TIME_MS);  // 500ms window
-        int32_t std_dev_adc = weight_sensor->get_standard_deviation_adc(GRIND_SCALE_PRECISION_SETTLING_TIME_MS);  // 500ms window
+    char std_dev_g_text[32];
+    snprintf(std_dev_g_text, sizeof(std_dev_g_text), "%.4f", std_dev_g);
+    lv_label_set_text(diag_std_dev_g_label, std_dev_g_text);
 
-        char std_dev_g_text[32];
-        snprintf(std_dev_g_text, sizeof(std_dev_g_text), "%.4f", std_dev_g);
-        lv_label_set_text(diag_std_dev_g_label, std_dev_g_text);
+    set_label_text_int(diag_std_dev_adc_label, std_dev_adc);
 
-        set_label_text_int(diag_std_dev_adc_label, std_dev_adc);
+    // Check noise level using WeightSensor diagnostic method
+    bool noise_acceptable = weight_sensor->noise_level_diagnostic();
 
-        // Check noise level using WeightSensor diagnostic method
-        bool noise_acceptable = weight_sensor->noise_level_diagnostic();
-
-        // Update noise level indicator
-        if (noise_acceptable) {
-            lv_label_set_text(diag_noise_level_label, "OK");
-            lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
-        } else {
-            lv_label_set_text(diag_noise_level_label, "Too High");
-            lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_ERROR), 0);
-        }
+    // Update noise level indicator
+    if (noise_acceptable) {
+        lv_label_set_text(diag_noise_level_label, "OK");
+        lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
+    } else {
+        lv_label_set_text(diag_noise_level_label, "Too High");
+        lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_ERROR), 0);
     }
 
     // Update calibration factor

@@ -6,6 +6,10 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+### Diagnostics & Calibration
+- **Diagnostics Screen Live Refresh**: Removed 1-second throttling on the Diagnostics page so standard deviation (`Std Dev (g)`, `Std Dev (ADC)`) and noise status update live at the native display/sampling rate (~80 Hz).
+- **False Noise Warning Fix**: Added a noise diagnostic reset when entering Diagnostics or clicking *Reset Diagnostics*, and extended the sustained instability threshold to 3000 ms so touch gestures do not falsely trigger "Too High" noise alerts.
+
 ## [1.6.6-beta.1] - 2026-10-20
 
 ### Grinding Animation & Display

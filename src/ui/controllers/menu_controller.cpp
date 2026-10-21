@@ -158,13 +158,23 @@ void MenuUIController::update() {
         last_status_update_ms_ = now;
         if (cur_page == ui_manager_->menu_screen.get_info_page()) {
             ui_manager_->menu_screen.update_info(sensor, now, ESP.getFreeHeap());
-        } else if (cur_page == ui_manager_->menu_screen.get_diagnostics_page()) {
-            ui_manager_->menu_screen.update_diagnostics(sensor);
         } else if (cur_page == ui_manager_->menu_screen.get_bluetooth_page()) {
             ui_manager_->menu_screen.update_ble_status();
         } else if (cur_page == ui_manager_->menu_screen.get_network_page()) {
             ui_manager_->menu_screen.update_network_status();
         }
+    }
+
+    if (cur_page == ui_manager_->menu_screen.get_diagnostics_page()) {
+        if (page_changed) {
+            if (sensor) {
+                sensor->reset_noise_diagnostic();
+            }
+            if (ui_manager_->diagnostics_controller_) {
+                ui_manager_->diagnostics_controller_->reset_noise_tracking();
+            }
+        }
+        ui_manager_->menu_screen.update_diagnostics(sensor);
     }
 
     if (ui_manager_->menu_screen.is_scale_page_active()) {
@@ -332,6 +342,7 @@ void MenuUIController::perform_diagnostics_reset() {
     auto* hardware = ui_manager_->get_hardware_manager();
     auto* sensor = hardware ? hardware->get_weight_sensor() : nullptr;
     if (sensor) {
+        sensor->reset_noise_diagnostic();
         ui_manager_->menu_screen.update_diagnostics(sensor);
     }
 }
