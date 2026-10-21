@@ -5,6 +5,8 @@ import vm from 'node:vm';
 
 const page = readFileSync(new URL('../../src/network/device_page.h', import.meta.url), 'utf8');
 const script = page.split('<script>')[1].split('</script>')[0];
+assert.match(page, /\[hidden\]\{display:none!important\}/,
+  'the field grid CSS must not override visibility state');
 const start = script.indexOf('function setCheck(');
 const end = script.indexOf('function clockText()', start);
 assert.ok(start >= 0 && end > start, 'screensaver visibility helpers must be present');
