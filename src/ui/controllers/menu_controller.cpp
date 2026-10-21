@@ -165,8 +165,9 @@ void MenuUIController::update() {
         }
     }
 
-    if (cur_page == ui_manager_->menu_screen.get_diagnostics_page()) {
-        if (page_changed) {
+    if (ui_manager_->menu_screen.is_diagnostics_page_active()) {
+        if (!diagnostics_active_tracking_) {
+            diagnostics_active_tracking_ = true;
             if (sensor) {
                 sensor->reset_noise_diagnostic();
             }
@@ -175,6 +176,8 @@ void MenuUIController::update() {
             }
         }
         ui_manager_->menu_screen.update_diagnostics(sensor);
+    } else {
+        diagnostics_active_tracking_ = false;
     }
 
     if (ui_manager_->menu_screen.is_scale_page_active()) {
@@ -343,6 +346,9 @@ void MenuUIController::perform_diagnostics_reset() {
     auto* sensor = hardware ? hardware->get_weight_sensor() : nullptr;
     if (sensor) {
         sensor->reset_noise_diagnostic();
+    }
+    ui_manager_->menu_screen.reset_diagnostics_display();
+    if (sensor) {
         ui_manager_->menu_screen.update_diagnostics(sensor);
     }
 }
@@ -1109,6 +1115,7 @@ void MenuUIController::return_to_menu() {
 void MenuUIController::reset_idle_timer() {
     in_menu_ = false;
     last_activity_ms_ = 0;
+    diagnostics_active_tracking_ = false;
 }
 
 void MenuUIController::auto_return_to_ready() {

@@ -8,6 +8,7 @@ line. Earlier release history remains available in the original project's
 
 ### Diagnostics & Calibration
 - **Diagnostics Screen Live Refresh**: Removed 1-second throttling on the Diagnostics page so standard deviation (`Std Dev (g)`, `Std Dev (ADC)`) and noise status update live at the native display/sampling rate (~80 Hz).
+- **Diagnostics Submenu Scoping & Optimization**: Ensured high-frequency sensor updates only run while actively viewing the Diagnostics submenu (`is_diagnostics_page_active()`), keeping the main menu list and other submenus completely smooth. Added dirty-checking to diagnostic labels to avoid layout invalidations and keep scrolling responsive.
 - **False Noise Warning Fix**: Added a noise diagnostic reset when entering Diagnostics or clicking *Reset Diagnostics*, and extended the sustained instability threshold to 3000 ms so touch gestures do not falsely trigger "Too High" noise alerts.
 
 ## [1.6.6-beta.1] - 2026-10-20
