@@ -709,6 +709,9 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
 void GrindingUIController::dispatch_event(const GrindEventData& event_data) {
     if (instance_) {
         instance_->handle_grind_event(event_data);
+        if (instance_->ui_manager_ && instance_->ui_manager_->get_rgb_led_controller()) {
+            instance_->ui_manager_->get_rgb_led_controller()->handle_grind_event(event_data);
+        }
     }
 }
 

@@ -112,6 +112,9 @@ void ScreenTimeoutController::update() {
         }
         display->set_panel_power(false);
         panel_off_ = true;
+        if (ui_manager_ && ui_manager_->get_rgb_led_controller()) {
+            ui_manager_->get_rgb_led_controller()->set_display_sleep(true, now);
+        }
         LOG_BLE("[DISPLAY] Panel off after %lus idle (%lus after screensaver)\n",
                 static_cast<unsigned long>(display_off_timeout_ms / 1000U),
                 static_cast<unsigned long>(timing_settings_.display_off_delay_s));
@@ -188,6 +191,10 @@ void ScreenTimeoutController::restore_normal_display(DisplayManager* display) {
 
     if (panel_off_ || !display->is_panel_powered_on()) {
         display->set_panel_power(true);
+    }
+
+    if (ui_manager_ && ui_manager_->get_rgb_led_controller()) {
+        ui_manager_->get_rgb_led_controller()->set_display_sleep(false, millis());
     }
 
     screen_dimmed_ = false;

@@ -94,6 +94,16 @@ Need a simple live readout? Open **Menu → Scale** to jump into a full-screen w
   display dims. An optional later panel-off stage protects the AMOLED during
   long idle periods.
 
+### Visual Feedback & RGB Status LED (Optional)
+The firmware supports one or multiple daisy-chained addressable RGB LEDs (WS2812B / SK6812 NeoPixels) connected to **GPIO 5** for ambient visual feedback without needing to look directly at the display:
+- **Idle / Standby**: Off (default) or subtle standby glow
+- **Blue (Breathing)**: Scale taring in progress
+- **Red (Solid)**: Grinding active (motor running)
+- **Amber / Yellow**: Grinding paused
+- **Green (Solid, 3s)**: Grind successfully completed (target reached)
+- **Red (Blinking, 3s)**: Error or safety timeout
+- **Screen Sleep**: Automatically shuts off completely (0 mA) when AMOLED panel sleeps
+
 ---
 
 ## User interface navigation

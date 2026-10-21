@@ -8,6 +8,7 @@ void HardwareManager::init() {
     display_manager.init();
     weight_sensor.init(&preferences);
     grinder.init(HW_MOTOR_RELAY_PIN);
+    rgb_led.init(HW_RGB_LED_PIN, USER_RGB_LED_COUNT);
 
     grind_controller = nullptr; // Will be set later
 

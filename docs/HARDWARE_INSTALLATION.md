@@ -97,6 +97,21 @@ ESP32-S3 3.3V      →    HX711 VCC
 ESP32-S3 GND       →    HX711 GND
 ```
 
+**Optional Addressable RGB Status LED (WS2812B / SK6812 / NeoPixel):**
+```
+ESP32-S3 GPIO 5 (P1 Pin 4) → LED DIN (Data In)
+ESP32-S3 5V (P2 Pin 11)   → LED 5V / VDD (or 3.3V on P2 Pin 8)
+ESP32-S3 GND (P2 Pin 10)  → LED GND
+```
+- **Idle / Standby**: Off (default) or subtle standby glow
+- **Blue (Breathing)**: Scale taring
+- **Red (Solid)**: Grinding active (motor running)
+- **Amber / Yellow**: Grinding paused
+- **Green (Solid, 3s)**: Target reached / grind complete
+- **Red (Blinking, 3s)**: Error / timeout
+- **Screen Sleep**: Off (0 mA)
+Supports 1 or multiple chained LEDs (all mirror the same state).
+
 **Load Cell to HX711 Wiring:**
 ```
 Load Cell           HX711

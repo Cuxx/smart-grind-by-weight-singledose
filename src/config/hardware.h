@@ -59,6 +59,9 @@
 #endif
 #define HW_GRINDER_SETTLING_TIME_MS 500                                        // Startup transient immunity (tune based on mechanical rigidity, 0 to disable)
 
+// RGB Status LED (WS2812B / SK6812)
+#define HW_RGB_LED_PIN 5                                                       // Pin for addressable RGB status LED(s)
+
 //------------------------------------------------------------------------------
 // LOAD CELL ADC SPECIFICATIONS
 //------------------------------------------------------------------------------

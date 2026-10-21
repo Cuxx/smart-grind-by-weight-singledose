@@ -29,6 +29,7 @@
 #include "controllers/screensaver_controller.h"
 #include "controllers/menu_controller.h"
 #include "controllers/status_indicator_controller.h"
+#include "../controllers/rgb_led_controller.h"
 #include "../system/state_machine.h"
 #include "../system/diagnostics_controller.h"
 #include "../controllers/profile_controller.h"
@@ -100,6 +101,7 @@ private:
     std::unique_ptr<ScreensaverController> screensaver_controller_;
     std::unique_ptr<JogAdjustController> jog_adjust_controller_;
     std::unique_ptr<DiagnosticsController> diagnostics_controller_;
+    std::unique_ptr<RgbLedController> rgb_led_controller_;
 
 public:
     ReadyScreen ready_screen;
@@ -133,6 +135,7 @@ public:
     HardwareManager* get_hardware_manager() { return hardware_manager; }
     GrindController* get_grind_controller() { return grind_controller; }
     OtaDataExportController* get_ota_data_export_controller() { return ota_data_export_controller_.get(); }
+    RgbLedController* get_rgb_led_controller() { return rgb_led_controller_.get(); }
     void set_current_tab(int tab) { current_tab = tab; }
     
     void set_background_active(bool active);

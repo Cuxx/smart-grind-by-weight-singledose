@@ -62,3 +62,13 @@
 #define USER_AUTO_GRIND_TRIGGER_WINDOW_MS 5000                                  // Time window for delta detection (milliseconds)
 #define USER_AUTO_GRIND_TRIGGER_SETTLING_MS 1000                                // Settling period after trigger detection before confirmation (milliseconds)
 #define USER_AUTO_GRIND_REARM_DELAY_MS 1500                                     // Minimum delay between auto actions (milliseconds)
+
+//------------------------------------------------------------------------------
+// RGB STATUS LED (WS2812B / SK6812)
+//------------------------------------------------------------------------------
+#define USER_RGB_LED_ENABLED true                                              // Enable addressable RGB status LED(s)
+#define USER_RGB_LED_COUNT 1                                                   // Number of daisy-chained RGB LEDs (all display identical state)
+#define USER_RGB_LED_BRIGHTNESS_PERCENT 25                                     // Default brightness percent (0-100)
+#define USER_RGB_LED_IDLE_OFF true                                             // If true, LED is OFF during idle; if false, uses subtle standby color
+#define USER_RGB_LED_COMPLETE_HOLD_MS 3000                                     // Hold green color duration after grind completes (milliseconds)
+#define USER_RGB_LED_ERROR_HOLD_MS 3000                                        // Hold error state duration (milliseconds)

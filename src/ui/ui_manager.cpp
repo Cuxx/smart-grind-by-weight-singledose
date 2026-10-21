@@ -208,6 +208,10 @@ void UIManager::update() {
         screen_timeout_controller_->update();
     }
 
+    if (rgb_led_controller_) {
+        rgb_led_controller_->update(millis());
+    }
+
     bool ota_cycle_consumed = false;
     if (ota_data_export_controller_) {
         ota_cycle_consumed = ota_data_export_controller_->update();
@@ -406,10 +410,16 @@ void UIManager::init_controllers() {
     screensaver_controller_ = std::make_unique<ScreensaverController>();
     jog_adjust_controller_ = std::make_unique<JogAdjustController>(this);
     diagnostics_controller_ = std::make_unique<DiagnosticsController>();
+    rgb_led_controller_ = std::make_unique<RgbLedController>();
 
     // Initialize diagnostics controller
     if (diagnostics_controller_) {
         diagnostics_controller_->init(hardware_manager);
+    }
+
+    // Initialize RGB LED controller
+    if (rgb_led_controller_ && hardware_manager) {
+        rgb_led_controller_->init(hardware_manager->get_rgb_led());
     }
 
     // Wire screensaver controller into screen timeout controller
