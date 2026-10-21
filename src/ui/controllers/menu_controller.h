@@ -77,6 +77,7 @@ private:
     uint32_t last_status_update_ms_ = 0;
     uint32_t last_activity_ms_ = 0;
     bool in_menu_ = false;
+    bool diagnostics_active_tracking_ = false;
     lv_obj_t* last_active_page_ = nullptr;
 
     void perform_factory_reset();

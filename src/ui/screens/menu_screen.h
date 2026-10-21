@@ -126,6 +126,15 @@ private:
     // Common elements
     bool visible;
     bool scale_active;
+    bool diagnostics_active;
+
+    // Diagnostics value caching to prevent unnecessary redraws
+    char last_diag_std_dev_g_text_[32]{};
+    int32_t last_diag_std_dev_adc_{INT32_MIN};
+    int last_diag_noise_acceptable_{-1};
+    float last_diag_cal_factor_{-999999.0f};
+    float last_diag_latency_ms_{-999999.0f};
+    int last_diag_overall_status_{-1};
     
     BluetoothManager* bluetooth_manager;
     GrindController* grind_controller;
@@ -161,6 +170,7 @@ public:
     void update_motor_latency_label(float latency_ms);
     void reset_scale_display();
     void update_scale_weight(float weight);
+    void reset_diagnostics_display();
 
     bool is_visible() const { return visible; }
     lv_obj_t* get_screen() const { return screen; }
@@ -176,6 +186,7 @@ public:
     lv_obj_t* get_motor_test_button() const { return motor_test_button; }
     lv_obj_t* get_autotune_button() const { return autotune_button; }
     bool is_scale_page_active() const { return scale_active; }
+    bool is_diagnostics_page_active() const { return diagnostics_active; }
     lv_obj_t* get_ble_toggle() const { return ble_toggle; }
     lv_obj_t* get_ble_startup_toggle() const { return ble_startup_toggle; }
     lv_obj_t* get_ble_icon_toggle() const { return ble_icon_toggle; }

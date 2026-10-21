@@ -17,12 +17,17 @@ class DiagnosticsNoiseTest(unittest.TestCase):
 
         menu_ctrl = (ROOT / "src/ui/controllers/menu_controller.cpp").read_text(encoding="utf-8")
         self.assertIn("sensor->reset_noise_diagnostic();", menu_ctrl)
-        self.assertIn("cur_page == ui_manager_->menu_screen.get_diagnostics_page()", menu_ctrl)
+        self.assertIn("ui_manager_->menu_screen.is_diagnostics_page_active()", menu_ctrl)
+
+        menu_screen_h = (ROOT / "src/ui/screens/menu_screen.h").read_text(encoding="utf-8")
+        self.assertIn("bool is_diagnostics_page_active() const { return diagnostics_active; }", menu_screen_h)
 
         menu_screen = (ROOT / "src/ui/screens/menu_screen.cpp").read_text(encoding="utf-8")
         # Ensure the 1000ms gate inside update_diagnostics has been removed
         update_diag_body = menu_screen.split("void MenuScreen::update_diagnostics(WeightSensor* weight_sensor)", 1)[1].split("\nvoid ", 1)[0]
         self.assertNotIn("last_std_dev_update >= 1000", update_diag_body)
+        self.assertIn("!diagnostics_active", update_diag_body)
+        self.assertIn("self->diagnostics_active = true;", menu_screen)
 
     def test_noise_diagnostic_behavior_simulation(self):
         cpp_code = r"""

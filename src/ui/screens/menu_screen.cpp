@@ -45,6 +45,8 @@ void MenuScreen::create(BluetoothManager* bluetooth, GrindController* grind_ctrl
 
     visible = false;
     scale_active = false;
+    diagnostics_active = false;
+    reset_diagnostics_display();
     menu = nullptr;
     main_page = nullptr;
     scale_page = nullptr;
@@ -257,6 +259,16 @@ void MenuScreen::create_menu_ui() {
             }
         } else if (self->scale_active) {
             self->scale_active = false;
+        }
+
+        bool on_diag = (cur == self->diagnostics_page);
+        if (on_diag) {
+            if (!self->diagnostics_active) {
+                self->diagnostics_active = true;
+                self->reset_diagnostics_display();
+            }
+        } else if (self->diagnostics_active) {
+            self->diagnostics_active = false;
         }
     };
 
@@ -1057,6 +1069,8 @@ void MenuScreen::reset_to_root() {
         lv_menu_set_page(menu, main_page);
     }
     scale_active = false;
+    diagnostics_active = false;
+    reset_diagnostics_display();
 }
 
 void MenuScreen::hide() {
@@ -1109,7 +1123,7 @@ void MenuScreen::update_info(const WeightSensor* weight_sensor, unsigned long up
 }
 
 void MenuScreen::update_diagnostics(WeightSensor* weight_sensor) {
-    if (!visible || !diagnostics_controller || !weight_sensor) return;
+    if (!visible || !diagnostics_active || !diagnostics_controller || !weight_sensor) return;
 
     // Get standard deviations using same window as grind control precision settling (500ms window)
     float std_dev_g = weight_sensor->get_standard_deviation_g(GRIND_SCALE_PRECISION_SETTLING_TIME_MS);
@@ -1117,59 +1131,79 @@ void MenuScreen::update_diagnostics(WeightSensor* weight_sensor) {
 
     char std_dev_g_text[32];
     snprintf(std_dev_g_text, sizeof(std_dev_g_text), "%.4f", std_dev_g);
-    lv_label_set_text(diag_std_dev_g_label, std_dev_g_text);
+    if (strcmp(std_dev_g_text, last_diag_std_dev_g_text_) != 0) {
+        strncpy(last_diag_std_dev_g_text_, std_dev_g_text, sizeof(last_diag_std_dev_g_text_) - 1);
+        last_diag_std_dev_g_text_[sizeof(last_diag_std_dev_g_text_) - 1] = '\0';
+        lv_label_set_text(diag_std_dev_g_label, std_dev_g_text);
+    }
 
-    set_label_text_int(diag_std_dev_adc_label, std_dev_adc);
+    if (std_dev_adc != last_diag_std_dev_adc_) {
+        last_diag_std_dev_adc_ = std_dev_adc;
+        set_label_text_int(diag_std_dev_adc_label, std_dev_adc);
+    }
 
     // Check noise level using WeightSensor diagnostic method
     bool noise_acceptable = weight_sensor->noise_level_diagnostic();
-
-    // Update noise level indicator
-    if (noise_acceptable) {
-        lv_label_set_text(diag_noise_level_label, "OK");
-        lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
-    } else {
-        lv_label_set_text(diag_noise_level_label, "Too High");
-        lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_ERROR), 0);
+    int noise_val = noise_acceptable ? 1 : 0;
+    if (noise_val != last_diag_noise_acceptable_) {
+        last_diag_noise_acceptable_ = noise_val;
+        if (noise_acceptable) {
+            lv_label_set_text(diag_noise_level_label, "OK");
+            lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
+        } else {
+            lv_label_set_text(diag_noise_level_label, "Too High");
+            lv_obj_set_style_text_color(diag_noise_level_label, lv_color_hex(THEME_COLOR_ERROR), 0);
+        }
     }
 
     // Update calibration factor
     float cal_factor = weight_sensor->get_calibration_factor();
-    char cal_factor_text[32];
-    snprintf(cal_factor_text, sizeof(cal_factor_text), "%.2f", cal_factor);
-    lv_label_set_text(diag_calibration_factor_label, cal_factor_text);
+    if (std::abs(cal_factor - last_diag_cal_factor_) > 0.001f) {
+        last_diag_cal_factor_ = cal_factor;
+        char cal_factor_text[32];
+        snprintf(cal_factor_text, sizeof(cal_factor_text), "%.2f", cal_factor);
+        lv_label_set_text(diag_calibration_factor_label, cal_factor_text);
+    }
 
     // Update motor latency
+    float latency_val = -1.0f;
     if (grind_controller) {
-        float motor_latency = grind_controller->get_motor_response_latency();
-        char latency_text[32];
-        snprintf(latency_text, sizeof(latency_text), "%.0f ms", motor_latency);
-        lv_label_set_text(diag_motor_latency_label, latency_text);
-    } else {
-        lv_label_set_text(diag_motor_latency_label, "-- ms");
+        latency_val = grind_controller->get_motor_response_latency();
+    }
+    if (std::abs(latency_val - last_diag_latency_ms_) > 0.1f) {
+        last_diag_latency_ms_ = latency_val;
+        if (grind_controller) {
+            char latency_text[32];
+            snprintf(latency_text, sizeof(latency_text), "%.0f ms", latency_val);
+            lv_label_set_text(diag_motor_latency_label, latency_text);
+        } else {
+            lv_label_set_text(diag_motor_latency_label, "-- ms");
+        }
     }
 
     // Get highest priority diagnostic
     DiagnosticCode diagnostic = diagnostics_controller->get_highest_priority_warning();
-
-    // Update status label
-    if (diagnostic == DiagnosticCode::NONE) {
-        lv_label_set_text(diag_status_label, "OK");
-        lv_obj_set_style_text_color(diag_status_label, lv_color_hex(THEME_COLOR_SUCCESS), 0);
-        lv_obj_add_flag(diag_info_label, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_label_set_text(diag_status_label, LV_SYMBOL_WARNING " Warning");
-        lv_obj_set_style_text_color(diag_status_label, lv_color_hex(THEME_COLOR_WARNING), 0);
-
-        // Show appropriate warning message
-        if (diagnostic == DiagnosticCode::LOAD_CELL_NOT_CALIBRATED) {
-            lv_label_set_text(diag_info_label, "Loadcell not calibrated");
-            lv_obj_clear_flag(diag_info_label, LV_OBJ_FLAG_HIDDEN);
+    int diag_code_int = static_cast<int>(diagnostic);
+    if (diag_code_int != last_diag_overall_status_) {
+        last_diag_overall_status_ = diag_code_int;
+        if (diagnostic == DiagnosticCode::NONE) {
+            lv_label_set_text(diag_status_label, "OK");
+            lv_obj_set_style_text_color(diag_status_label, lv_color_hex(THEME_COLOR_SUCCESS), 0);
+            lv_obj_add_flag(diag_info_label, LV_OBJ_FLAG_HIDDEN);
         } else {
-            // For future noise/mechanical warnings, show in info label
-            const char* message = diagnostics_controller->get_diagnostic_message(diagnostic);
-            lv_label_set_text(diag_info_label, message);
-            lv_obj_clear_flag(diag_info_label, LV_OBJ_FLAG_HIDDEN);
+            lv_label_set_text(diag_status_label, LV_SYMBOL_WARNING " Warning");
+            lv_obj_set_style_text_color(diag_status_label, lv_color_hex(THEME_COLOR_WARNING), 0);
+
+            // Show appropriate warning message
+            if (diagnostic == DiagnosticCode::LOAD_CELL_NOT_CALIBRATED) {
+                lv_label_set_text(diag_info_label, "Loadcell not calibrated");
+                lv_obj_clear_flag(diag_info_label, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                // For future noise/mechanical warnings, show in info label
+                const char* message = diagnostics_controller->get_diagnostic_message(diagnostic);
+                lv_label_set_text(diag_info_label, message);
+                lv_obj_clear_flag(diag_info_label, LV_OBJ_FLAG_HIDDEN);
+            }
         }
     }
 }
@@ -1676,6 +1710,15 @@ void MenuScreen::reset_scale_display() {
     if (scale_weight_label) {
         lv_label_set_text(scale_weight_label, "0.0g");
     }
+}
+
+void MenuScreen::reset_diagnostics_display() {
+    last_diag_std_dev_g_text_[0] = '\0';
+    last_diag_std_dev_adc_ = INT32_MIN;
+    last_diag_noise_acceptable_ = -1;
+    last_diag_cal_factor_ = -999999.0f;
+    last_diag_latency_ms_ = -999999.0f;
+    last_diag_overall_status_ = -1;
 }
 
 void MenuScreen::update_scale_weight(float weight) {
