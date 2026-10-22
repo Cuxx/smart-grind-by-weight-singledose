@@ -35,8 +35,6 @@ add_executable(smart-grind-sim
     "${PROJECT_ROOT}/src/ui/screens/grinding_screen_arc.cpp"
     "${PROJECT_ROOT}/src/ui/screens/grinding_screen_chart.cpp"
     "${PROJECT_ROOT}/src/ui/screens/grinding_screen_disc.cpp"
-    "${PROJECT_ROOT}/src/ui/screens/grinding_screen_bean_flow.cpp"
-    "${PROJECT_ROOT}/src/ui/screens/grinding_screen_rotor.cpp"
     "${PROJECT_ROOT}/src/font/lv_font_montserrat_56.c"
     "${PROJECT_ROOT}/src/font/lv_font_montserrat_60.c"
     "${PROJECT_ROOT}/src/font/lv_font_montserrat_80.c"
@@ -89,8 +87,6 @@ if(BUILD_TESTING)
     set_tests_properties(simulator_swipe_budget PROPERTIES TIMEOUT 10)
     add_test(NAME simulator_manual_smoke COMMAND smart-grind-sim --manual-smoke)
     set_tests_properties(simulator_manual_smoke PROPERTIES TIMEOUT 15)
-    add_test(NAME simulator_grind_layouts COMMAND smart-grind-sim --layout-smoke)
-    set_tests_properties(simulator_grind_layouts PROPERTIES TIMEOUT 15)
     add_test(NAME display_idle_policy COMMAND display-idle-policy-test)
     set_tests_properties(display_idle_policy PROPERTIES TIMEOUT 5)
     add_test(NAME net_weight_guard COMMAND net-weight-guard-test)

@@ -13,27 +13,6 @@
 
 GrindingUIController* GrindingUIController::instance_ = nullptr;
 
-namespace {
-GrindScreenActivity visual_activity_for_phase(GrindPhase phase) {
-    switch (phase) {
-        case GrindPhase::PREDICTIVE:
-        case GrindPhase::PRIME:
-        case GrindPhase::TIME_GRINDING:
-        case GrindPhase::MANUAL_GRINDING:
-            return GrindScreenActivity::ACTIVE;
-        case GrindPhase::PULSE_EXECUTE:
-        case GrindPhase::TIME_ADDITIONAL_PULSE:
-            return GrindScreenActivity::PULSE;
-        case GrindPhase::PULSE_SETTLING:
-        case GrindPhase::FINAL_SETTLING:
-        case GrindPhase::PRIME_SETTLING:
-            return GrindScreenActivity::SETTLING;
-        default:
-            return GrindScreenActivity::STOPPED;
-    }
-}
-}  // namespace
-
 GrindingUIController::GrindingUIController(UIManager* manager)
     : ui_manager_(manager) {
     instance_ = this;
@@ -130,19 +109,6 @@ void GrindingUIController::register_events() {
                 }
             }
         }, LV_EVENT_CLICKED, this);
-    }
-
-    for (lv_obj_t* screen : {ui_manager_->grinding_screen.get_bean_flow_screen_obj(),
-                             ui_manager_->grinding_screen.get_rotor_screen_obj()}) {
-        if (screen) {
-            lv_obj_add_event_cb(screen, [](lv_event_t* e) {
-                if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-                    if (auto* controller = static_cast<GrindingUIController*>(lv_event_get_user_data(e))) {
-                        controller->handle_layout_toggle();
-                    }
-                }
-            }, LV_EVENT_CLICKED, this);
-        }
     }
 
     // NOTE: Purge confirm reuses existing grind_button_ (CANCEL) and pulse_button_ (CONTINUE)
@@ -377,10 +343,6 @@ void GrindingUIController::handle_layout_toggle() {
             ui_manager_->grinding_screen.set_layout(GrindScreenLayout::DISC_SOLID);
         } else if (current_layout == GrindScreenLayout::DISC_SOLID) {
             ui_manager_->grinding_screen.set_layout(GrindScreenLayout::NERDY_CHART);
-        } else if (current_layout == GrindScreenLayout::NERDY_CHART) {
-            ui_manager_->grinding_screen.set_layout(GrindScreenLayout::BEAN_FLOW);
-        } else if (current_layout == GrindScreenLayout::BEAN_FLOW) {
-            ui_manager_->grinding_screen.set_layout(GrindScreenLayout::GRINDER_ROTOR);
         } else {
             ui_manager_->grinding_screen.set_layout(GrindScreenLayout::MINIMAL_ARC);
         }
@@ -564,7 +526,6 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
     switch (event_data.event) {
         case UIGrindEvent::PHASE_CHANGED: {
             ui_manager_->current_mode = event_data.mode;
-            ui_manager_->grinding_screen.set_activity(visual_activity_for_phase(event_data.phase));
 
             // Handle PURGE_CONFIRM phase specially - show purge confirmation popup
             if (event_data.phase == GrindPhase::PURGE_CONFIRM) {
@@ -660,7 +621,6 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
         }
         case UIGrindEvent::COMPLETED: {
             ui_manager_->current_mode = event_data.mode;
-            ui_manager_->grinding_screen.set_activity(GrindScreenActivity::STOPPED);
             ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
             final_grind_weight_ = event_data.final_weight;
             final_grind_progress_ = event_data.progress_percent;
@@ -673,7 +633,6 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
         }
         case UIGrindEvent::TIMEOUT: {
             ui_manager_->current_mode = event_data.mode;
-            ui_manager_->grinding_screen.set_activity(GrindScreenActivity::STOPPED);
             ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
             error_grind_weight_ = event_data.error_weight;
             error_grind_progress_ = event_data.error_progress;
@@ -688,7 +647,6 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
             break;
         }
         case UIGrindEvent::STOPPED: {
-            ui_manager_->grinding_screen.set_activity(GrindScreenActivity::STOPPED);
             cancel_timers();
             chart_updates_enabled_ = false;
             ui_manager_->switch_to_state(UIState::READY);
@@ -726,7 +684,6 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
             update_button_layout();
             break;
         case UIGrindEvent::PULSE_STARTED:
-            ui_manager_->grinding_screen.set_activity(GrindScreenActivity::PULSE);
             LOG_BLE("[UIManager] Pulse #%d started (%.1fms)\n",
                     event_data.pulse_count, (float)event_data.pulse_duration_ms);
 #if DEBUG_ENABLE_GRINDER_BACKGROUND_INDICATOR
@@ -739,7 +696,6 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
 #endif
             break;
         case UIGrindEvent::PULSE_COMPLETED:
-            ui_manager_->grinding_screen.set_activity(GrindScreenActivity::SETTLING);
             LOG_BLE("[UIManager] Pulse #%d completed - weight: %.2fg\n",
                     event_data.pulse_count, event_data.current_weight);
             ui_manager_->grinding_screen.update_current_weight(event_data.current_weight);
@@ -920,7 +876,6 @@ void GrindingUIController::start_demo() {
 
     // Ensure we are in weight mode for demo (so manual mode is disabled during demo)
     ui_manager_->grinding_screen.set_mode(GrindMode::WEIGHT);
-    ui_manager_->grinding_screen.set_activity(GrindScreenActivity::ACTIVE);
 
     // Hide screens, show grinding screen
     ui_manager_->ready_screen.hide();
@@ -971,7 +926,6 @@ void GrindingUIController::stop_demo() {
     }
 
     if (ui_manager_) {
-        ui_manager_->grinding_screen.set_activity(GrindScreenActivity::STOPPED);
         ui_manager_->grinding_screen.set_completed(false);
         ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
         if (demo_previous_state_ == UIState::READY) {
@@ -1003,7 +957,6 @@ void GrindingUIController::demo_timer_cb(lv_timer_t* timer) {
         ui_manager_->grinding_screen.update_current_weight(demo_target_weight_);
         ui_manager_->grinding_screen.update_progress(100);
         ui_manager_->grinding_screen.set_completed(true);
-        ui_manager_->grinding_screen.set_activity(GrindScreenActivity::STOPPED);
         demo_completed_ = true;
 
         if (grind_button_) {

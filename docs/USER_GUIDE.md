@@ -91,9 +91,7 @@ Need a simple live readout? Open **Menu → Scale** to jump into a full-screen w
 - **Disc Ring**: Expanding circular disc animation with an emerald halo accent ring framing the weight upon completion
 - **Disc Solid**: Expanding circular disc animation that switches to a solid emerald card upon completion
 - **Nerdy Layout**: Detailed charts showing flow rates and real-time grinding analytics
-- **Bean Flow**: A restrained animated stream of coffee particles moving from the grinder chute into a portafilter; it runs while the motor is active, briefly intensifies for correction pulses, and winds down while grounds settle.
-- **Grinder Rotor**: A compact grinder-burr rotor that spins while the motor is active, accelerates for correction pulses, and winds down during settling.
-- **Switching**: Tap the weight display or screen to cycle between all six styles during grinding (Arc → Disc Ring → Disc Solid → Chart → Bean Flow → Grinder Rotor), or choose your preferred default in **Menu → Settings → Display**. The selected layout is saved for future grinds.
+- **Switching**: Tap the weight display or screen to cycle between all four styles during grinding (Arc → Disc Ring → Disc Solid → Chart), or choose your preferred default in **Menu → Settings → Display** or via the Web UI
 - **Screensaver**: A custom or built-in design can show on startup or when the
   display dims. An optional later panel-off stage protects the AMOLED during
   long idle periods.
@@ -139,7 +137,7 @@ Main Screen (swipe left/right between tabs, up/down to toggle weight/time mode i
     |   |
 	    |   +-- Display
 	    |   |   |-- Mode Icons toggle (icons vs text titles on grind screens)
-	    |   |   |-- Grind Animation selector (Arc, Disc Ring, Disc Solid, Chart, Bean Flow, Grinder Rotor)
+	    |   |   |-- Grind Animation selector (Arc, Disc, Chart)
 	    |   |   |-- Demo Animation button (preview animation without running motor)
 	    |   |   |-- Normal brightness slider
 	    |   |   |-- Screensaver brightness slider
@@ -183,7 +181,7 @@ Main Screen (swipe left/right between tabs, up/down to toggle weight/time mode i
 
 During Grinding:
 |-- Weight/elapsed display & progress
-|-- Tap anywhere: cycle Arc, Disc Ring, Disc Solid, Chart, Bean Flow and Grinder Rotor
+|-- Tap anywhere: Arc ↔ Nerdy display modes
 |-- STOP button
 \-- Purge Confirmation (appears in Purge mode after grinder saturation)
     |-- "Grinder Purged" title

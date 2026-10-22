@@ -12,7 +12,7 @@ void GrindingScreen::init(Preferences* prefs) {
     // Load saved layout preference using the provided preferences instance
     if (preferences && preferences->isKey("grind_layout")) {
         int saved_layout = preferences->getInt("grind_layout", (int)GrindScreenLayout::MINIMAL_ARC);
-        if (saved_layout < 0 || saved_layout > (int)GrindScreenLayout::GRINDER_ROTOR) {
+        if (saved_layout < 0 || saved_layout > (int)GrindScreenLayout::NERDY_CHART) {
             saved_layout = (int)GrindScreenLayout::MINIMAL_ARC;
         }
         current_layout = (GrindScreenLayout)saved_layout;
@@ -28,10 +28,6 @@ void GrindingScreen::init(Preferences* prefs) {
         active_screen = (IGrindingScreen*)&disc_screen;
     } else if (current_layout == GrindScreenLayout::NERDY_CHART) {
         active_screen = (IGrindingScreen*)&chart_screen;
-    } else if (current_layout == GrindScreenLayout::BEAN_FLOW) {
-        active_screen = (IGrindingScreen*)&bean_flow_screen;
-    } else if (current_layout == GrindScreenLayout::GRINDER_ROTOR) {
-        active_screen = (IGrindingScreen*)&rotor_screen;
     } else {
         active_screen = (IGrindingScreen*)&arc_screen;
     }
@@ -64,10 +60,6 @@ void GrindingScreen::set_layout(GrindScreenLayout layout) {
         active_screen = (IGrindingScreen*)&disc_screen;
     } else if (layout == GrindScreenLayout::NERDY_CHART) {
         active_screen = (IGrindingScreen*)&chart_screen;
-    } else if (layout == GrindScreenLayout::BEAN_FLOW) {
-        active_screen = (IGrindingScreen*)&bean_flow_screen;
-    } else if (layout == GrindScreenLayout::GRINDER_ROTOR) {
-        active_screen = (IGrindingScreen*)&rotor_screen;
     } else {
         active_screen = (IGrindingScreen*)&arc_screen;
     }
@@ -88,19 +80,13 @@ void GrindingScreen::create() {
     arc_screen.create();
     chart_screen.create();
     disc_screen.create();
-    bean_flow_screen.create();
-    rotor_screen.create();
     arc_screen.set_time_mode(current_mode == GrindMode::TIME);
     chart_screen.set_time_mode(current_mode == GrindMode::TIME);
     disc_screen.set_time_mode(current_mode == GrindMode::TIME);
-    bean_flow_screen.set_time_mode(current_mode == GrindMode::TIME);
-    rotor_screen.set_time_mode(current_mode == GrindMode::TIME);
     
     arc_screen.hide();
     chart_screen.hide();
     disc_screen.hide();
-    bean_flow_screen.hide();
-    rotor_screen.hide();
     if (active_screen) {
         active_screen->show();
     }
@@ -118,69 +104,48 @@ void GrindingScreen::update_profile_name(const char* name) {
     arc_screen.update_profile_name(name);
     chart_screen.update_profile_name(name);
     disc_screen.update_profile_name(name);
-    bean_flow_screen.update_profile_name(name);
-    rotor_screen.update_profile_name(name);
 }
 
 void GrindingScreen::update_target_weight(float weight) {
     arc_screen.update_target_weight(weight);
     chart_screen.update_target_weight(weight);
     disc_screen.update_target_weight(weight);
-    bean_flow_screen.update_target_weight(weight);
-    rotor_screen.update_target_weight(weight);
 }
 
 void GrindingScreen::update_target_weight_text(const char* text) {
     arc_screen.update_target_weight_text(text);
     chart_screen.update_target_weight_text(text);
     disc_screen.update_target_weight_text(text);
-    bean_flow_screen.update_target_weight_text(text);
-    rotor_screen.update_target_weight_text(text);
 }
 
 void GrindingScreen::update_target_time(float seconds) {
     arc_screen.update_target_time(seconds);
     chart_screen.update_target_time(seconds);
     disc_screen.update_target_time(seconds);
-    bean_flow_screen.update_target_time(seconds);
-    rotor_screen.update_target_time(seconds);
 }
 
 void GrindingScreen::update_current_weight(float weight) {
     arc_screen.update_current_weight(weight);
     chart_screen.update_current_weight(weight);
     disc_screen.update_current_weight(weight);
-    bean_flow_screen.update_current_weight(weight);
-    rotor_screen.update_current_weight(weight);
 }
 
 void GrindingScreen::update_tare_display() {
     arc_screen.update_tare_display();
     chart_screen.update_tare_display();
     disc_screen.update_tare_display();
-    bean_flow_screen.update_tare_display();
-    rotor_screen.update_tare_display();
 }
 
 void GrindingScreen::update_progress(int percent) {
     arc_screen.update_progress(percent);
     chart_screen.update_progress(percent);
     disc_screen.update_progress(percent);
-    bean_flow_screen.update_progress(percent);
-    rotor_screen.update_progress(percent);
 }
 
 void GrindingScreen::set_completed(bool completed) {
     arc_screen.set_completed(completed);
     chart_screen.set_completed(completed);
     disc_screen.set_completed(completed);
-    bean_flow_screen.set_completed(completed);
-    rotor_screen.set_completed(completed);
-}
-
-void GrindingScreen::set_activity(GrindScreenActivity activity) {
-    bean_flow_screen.set_activity(activity);
-    rotor_screen.set_activity(activity);
 }
 
 bool GrindingScreen::is_visible() const {
@@ -209,12 +174,8 @@ void GrindingScreen::set_mode(GrindMode mode) {
     arc_screen.set_time_mode(time_enabled);
     chart_screen.set_time_mode(time_enabled);
     disc_screen.set_time_mode(time_enabled);
-    bean_flow_screen.set_time_mode(time_enabled);
-    rotor_screen.set_time_mode(time_enabled);
     arc_screen.set_manual_mode(manual_enabled);
     disc_screen.set_manual_mode(manual_enabled);
-    bean_flow_screen.set_manual_mode(manual_enabled);
-    rotor_screen.set_manual_mode(manual_enabled);
 }
 
 void GrindingScreen::set_chart_time_prediction(uint32_t predicted_time_ms) {

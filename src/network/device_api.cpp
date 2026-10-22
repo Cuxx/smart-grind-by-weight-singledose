@@ -722,7 +722,7 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                  (String(settings.clock_position) == "center" || String(settings.clock_position) == "top" || String(settings.clock_position) == "bottom") &&
                  (String(settings.clock_layout) == "horizontal" || String(settings.clock_layout) == "stacked") &&
                  (strlen(settings.timezone) > 0 && strlen(settings.timezone) < sizeof(settings.timezone)) &&
-                 (!settings.has_grind_layout || (settings.grind_layout >= 0 && settings.grind_layout <= 5)) &&
+                 (!settings.has_grind_layout || (settings.grind_layout >= 0 && settings.grind_layout <= 3)) &&
                  (!settings.has_disc_color || (settings.disc_color >= 0 && settings.disc_color <= 4));
     for (int i = 0; i < 3 && valid; ++i) {
         valid = std::isfinite(settings.profile_weights[i]) &&

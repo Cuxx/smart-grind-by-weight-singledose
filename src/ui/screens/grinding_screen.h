@@ -3,8 +3,6 @@
 #include "grinding_screen_arc.h"
 #include "grinding_screen_chart.h"
 #include "grinding_screen_disc.h"
-#include "grinding_screen_bean_flow.h"
-#include "grinding_screen_rotor.h"
 #include <Preferences.h>
 #include "../../controllers/grind_mode.h"
 
@@ -16,8 +14,6 @@ private:
     GrindingScreenArc arc_screen;
     GrindingScreenChart chart_screen;
     GrindingScreenDisc disc_screen;
-    GrindingScreenBeanFlow bean_flow_screen;
-    GrindingScreenRotor rotor_screen;
     Preferences* preferences;
     GrindMode current_mode;
     
@@ -43,7 +39,6 @@ public:
     void update_tare_display() override;
     void update_progress(int percent) override;
     void set_completed(bool completed) override;
-    void set_activity(GrindScreenActivity activity) override;
     bool is_visible() const override;
     lv_obj_t* get_screen() const override;
     void add_chart_data_point(float current_weight, float flow_rate, uint32_t current_time_ms) override;
@@ -55,8 +50,6 @@ public:
     lv_obj_t* get_arc_screen_obj() const { return arc_screen.get_screen(); }
     lv_obj_t* get_chart_screen_obj() const { return chart_screen.get_screen(); }
     lv_obj_t* get_disc_screen_obj() const { return disc_screen.get_screen(); }
-    lv_obj_t* get_bean_flow_screen_obj() const { return bean_flow_screen.get_screen(); }
-    lv_obj_t* get_rotor_screen_obj() const { return rotor_screen.get_screen(); }
     void set_disc_color_preset(int preset_index);
     int get_disc_color_preset() const { return disc_screen.get_color_preset(); }
     const DiscColorPresetDef& get_disc_color_preset_def() const { return disc_screen.get_color_preset_def(); }

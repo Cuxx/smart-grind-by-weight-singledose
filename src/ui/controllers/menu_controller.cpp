@@ -1004,7 +1004,7 @@ void MenuUIController::handle_grind_layout_radio_button() {
     if (!radio_group) return;
 
     int selected_index = radio_button_group_get_selection(radio_group);
-    if (selected_index < 0 || selected_index > static_cast<int>(GrindScreenLayout::GRINDER_ROTOR)) return;
+    if (selected_index < 0 || selected_index > 3) return;
 
     ui_manager_->menu_screen.set_disc_color_button_visible(selected_index == 1 || selected_index == 2);
 
@@ -1013,9 +1013,7 @@ void MenuUIController::handle_grind_layout_radio_button() {
 
     LOG_DEBUG_PRINTLN(selected_index == 0 ? "Grind layout set to ARC" :
                       selected_index == 1 ? "Grind layout set to DISC (RING)" :
-                      selected_index == 2 ? "Grind layout set to DISC (SOLID)" :
-                      selected_index == 3 ? "Grind layout set to CHART" :
-                      selected_index == 4 ? "Grind layout set to BEAN FLOW" : "Grind layout set to GRINDER ROTOR");
+                      selected_index == 2 ? "Grind layout set to DISC (SOLID)" : "Grind layout set to CHART");
 }
 
 void MenuUIController::handle_demo_animation() {
