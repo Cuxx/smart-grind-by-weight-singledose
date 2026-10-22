@@ -6,6 +6,8 @@ const page = read('../../src/network/device_page.h');
 const api = read('../../src/network/device_api.cpp');
 const layout = read('../../src/ui/screens/grinding_screen_base.h');
 const screen = read('../../src/ui/screens/grinding_screen.cpp');
+const beanFlow = read('../../src/ui/screens/grinding_screen_bean_flow.cpp');
+const rotor = read('../../src/ui/screens/grinding_screen_rotor.cpp');
 
 assert.match(layout, /BEAN_FLOW = 4/);
 assert.match(layout, /GRINDER_ROTOR = 5/);
@@ -14,5 +16,10 @@ assert.match(page, /<option value="5">Grinder Rotor<\/option>/);
 assert.match(api, /settings\.grind_layout >= 0 && settings\.grind_layout <= 5/);
 assert.match(screen, /GrindScreenLayout::BEAN_FLOW/);
 assert.match(screen, /GrindScreenLayout::GRINDER_ROTOR/);
+assert.doesNotMatch(beanFlow, /portafilter|handle/);
+assert.match(beanFlow, /dosing_cup/);
+assert.match(beanFlow, /coffee_bed/);
+assert.match(rotor, /dosing_cup/);
+assert.match(rotor, /chute/);
 
 console.log('Grind layout option regression checks passed.');

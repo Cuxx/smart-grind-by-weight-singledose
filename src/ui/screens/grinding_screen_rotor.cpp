@@ -9,7 +9,11 @@ constexpr uint32_t ROTOR_COLOR = 0x4A4A4A;
 constexpr uint32_t ROTOR_BLADE_COLOR = 0x9A9A9A;
 constexpr uint32_t ROTOR_ACTIVE_COLOR = 0xD4A017;
 constexpr uint32_t ROTOR_COMPLETE_COLOR = 0x00C853;
-constexpr int ROTOR_CENTER_Y = 190;
+constexpr uint32_t SCALE_COLOR = 0x3B3B3B;
+constexpr uint32_t SCALE_ACCENT_COLOR = 0x6A6A6A;
+constexpr uint32_t DOSING_CUP_COLOR = 0x707070;
+constexpr uint32_t DOSING_CUP_RIM_COLOR = 0xB8B8B8;
+constexpr int ROTOR_CENTER_Y = 170;
 }
 
 GrindingScreenRotor::~GrindingScreenRotor() {
@@ -42,8 +46,8 @@ void GrindingScreenRotor::create() {
     lv_obj_align(target_label_, LV_ALIGN_TOP_MID, 0, 47);
 
     lv_obj_t* rotor_ring = lv_obj_create(screen_);
-    lv_obj_set_size(rotor_ring, 142, 142);
-    lv_obj_align(rotor_ring, LV_ALIGN_TOP_MID, 0, ROTOR_CENTER_Y - 71);
+    lv_obj_set_size(rotor_ring, 124, 124);
+    lv_obj_align(rotor_ring, LV_ALIGN_TOP_MID, 0, ROTOR_CENTER_Y - 62);
     lv_obj_set_style_radius(rotor_ring, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(rotor_ring, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(rotor_ring, 3, 0);
@@ -53,8 +57,8 @@ void GrindingScreenRotor::create() {
 
     for (int i = 0; i < 3; ++i) {
         rotor_blades_[i] = lv_obj_create(screen_);
-        lv_obj_set_size(rotor_blades_[i], 16, 106);
-        lv_obj_align(rotor_blades_[i], LV_ALIGN_TOP_MID, 0, ROTOR_CENTER_Y - 53);
+        lv_obj_set_size(rotor_blades_[i], 14, 92);
+        lv_obj_align(rotor_blades_[i], LV_ALIGN_TOP_MID, 0, ROTOR_CENTER_Y - 46);
         lv_obj_set_style_radius(rotor_blades_[i], 8, 0);
         lv_obj_set_style_bg_color(rotor_blades_[i], lv_color_hex(ROTOR_BLADE_COLOR), 0);
         lv_obj_set_style_bg_opa(rotor_blades_[i], LV_OPA_COVER, 0);
@@ -73,11 +77,49 @@ void GrindingScreenRotor::create() {
     lv_obj_clear_flag(rotor_hub, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(rotor_hub, LV_OBJ_FLAG_CLICKABLE);
 
+    lv_obj_t* chute = lv_obj_create(screen_);
+    lv_obj_set_size(chute, 18, 28);
+    lv_obj_align(chute, LV_ALIGN_TOP_MID, 0, 228);
+    lv_obj_set_style_radius(chute, 4, 0);
+    lv_obj_set_style_bg_color(chute, lv_color_hex(0x303030), 0);
+    lv_obj_set_style_border_width(chute, 0, 0);
+    lv_obj_clear_flag(chute, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(chute, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t* scale = lv_obj_create(screen_);
+    lv_obj_set_size(scale, 172, 24);
+    lv_obj_align(scale, LV_ALIGN_TOP_MID, 0, 319);
+    lv_obj_set_style_radius(scale, 8, 0);
+    lv_obj_set_style_bg_color(scale, lv_color_hex(SCALE_COLOR), 0);
+    lv_obj_set_style_border_width(scale, 1, 0);
+    lv_obj_set_style_border_color(scale, lv_color_hex(SCALE_ACCENT_COLOR), 0);
+    lv_obj_clear_flag(scale, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(scale, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t* dosing_cup = lv_obj_create(screen_);
+    lv_obj_set_size(dosing_cup, 86, 58);
+    lv_obj_align(dosing_cup, LV_ALIGN_TOP_MID, 0, 261);
+    lv_obj_set_style_radius(dosing_cup, 10, 0);
+    lv_obj_set_style_bg_color(dosing_cup, lv_color_hex(DOSING_CUP_COLOR), 0);
+    lv_obj_set_style_border_width(dosing_cup, 2, 0);
+    lv_obj_set_style_border_color(dosing_cup, lv_color_hex(DOSING_CUP_RIM_COLOR), 0);
+    lv_obj_clear_flag(dosing_cup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(dosing_cup, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t* cup_rim = lv_obj_create(screen_);
+    lv_obj_set_size(cup_rim, 104, 14);
+    lv_obj_align(cup_rim, LV_ALIGN_TOP_MID, 0, 254);
+    lv_obj_set_style_radius(cup_rim, 7, 0);
+    lv_obj_set_style_bg_color(cup_rim, lv_color_hex(DOSING_CUP_RIM_COLOR), 0);
+    lv_obj_set_style_border_width(cup_rim, 0, 0);
+    lv_obj_clear_flag(cup_rim, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(cup_rim, LV_OBJ_FLAG_CLICKABLE);
+
     weight_label_ = lv_label_create(screen_);
     lv_label_set_text(weight_label_, "0.0g");
     lv_obj_set_style_text_font(weight_label_, &lv_font_montserrat_36, 0);
     lv_obj_set_style_text_color(weight_label_, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
-    lv_obj_align(weight_label_, LV_ALIGN_TOP_MID, 0, 286);
+    lv_obj_align(weight_label_, LV_ALIGN_TOP_MID, 0, 346);
 
     for (uint32_t i = 0; i < lv_obj_get_child_cnt(screen_); ++i) {
         lv_obj_clear_flag(lv_obj_get_child(screen_, i), LV_OBJ_FLAG_CLICKABLE);

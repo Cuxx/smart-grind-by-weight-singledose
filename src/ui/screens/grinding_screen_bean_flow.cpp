@@ -6,11 +6,14 @@
 
 namespace {
 constexpr uint32_t GRINDER_BODY_COLOR = 0x444444;
-constexpr uint32_t PORTAFILTER_COLOR = 0xA0A0A0;
+constexpr uint32_t SCALE_COLOR = 0x3B3B3B;
+constexpr uint32_t SCALE_ACCENT_COLOR = 0x6A6A6A;
+constexpr uint32_t DOSING_CUP_COLOR = 0x707070;
+constexpr uint32_t DOSING_CUP_RIM_COLOR = 0xB8B8B8;
 constexpr uint32_t BEAN_COLOR = 0x8B5A2B;
 constexpr uint32_t FLOW_COMPLETE_COLOR = 0x00C853;
-constexpr int PARTICLE_START_Y = 170;
-constexpr int PARTICLE_TRAVEL_PX = 82;
+constexpr int PARTICLE_START_Y = 184;
+constexpr int PARTICLE_TRAVEL_PX = 66;
 }
 
 GrindingScreenBeanFlow::~GrindingScreenBeanFlow() {
@@ -61,24 +64,43 @@ void GrindingScreenBeanFlow::create() {
     lv_obj_clear_flag(chute, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(chute, LV_OBJ_FLAG_CLICKABLE);
 
-    lv_obj_t* portafilter = lv_obj_create(screen_);
-    lv_obj_set_size(portafilter, 158, 42);
-    lv_obj_align(portafilter, LV_ALIGN_TOP_MID, 0, 244);
-    lv_obj_set_style_radius(portafilter, 0, 0);
-    lv_obj_set_style_bg_opa(portafilter, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(portafilter, 3, 0);
-    lv_obj_set_style_border_color(portafilter, lv_color_hex(PORTAFILTER_COLOR), 0);
-    lv_obj_clear_flag(portafilter, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(portafilter, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_t* scale = lv_obj_create(screen_);
+    lv_obj_set_size(scale, 172, 26);
+    lv_obj_align(scale, LV_ALIGN_TOP_MID, 0, 315);
+    lv_obj_set_style_radius(scale, 8, 0);
+    lv_obj_set_style_bg_color(scale, lv_color_hex(SCALE_COLOR), 0);
+    lv_obj_set_style_border_width(scale, 1, 0);
+    lv_obj_set_style_border_color(scale, lv_color_hex(SCALE_ACCENT_COLOR), 0);
+    lv_obj_clear_flag(scale, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(scale, LV_OBJ_FLAG_CLICKABLE);
 
-    lv_obj_t* handle = lv_obj_create(screen_);
-    lv_obj_set_size(handle, 48, 8);
-    lv_obj_align(handle, LV_ALIGN_TOP_MID, 0, 285);
-    lv_obj_set_style_radius(handle, 4, 0);
-    lv_obj_set_style_bg_color(handle, lv_color_hex(PORTAFILTER_COLOR), 0);
-    lv_obj_set_style_border_width(handle, 0, 0);
-    lv_obj_clear_flag(handle, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(handle, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_t* dosing_cup = lv_obj_create(screen_);
+    lv_obj_set_size(dosing_cup, 86, 60);
+    lv_obj_align(dosing_cup, LV_ALIGN_TOP_MID, 0, 255);
+    lv_obj_set_style_radius(dosing_cup, 10, 0);
+    lv_obj_set_style_bg_color(dosing_cup, lv_color_hex(DOSING_CUP_COLOR), 0);
+    lv_obj_set_style_border_width(dosing_cup, 2, 0);
+    lv_obj_set_style_border_color(dosing_cup, lv_color_hex(DOSING_CUP_RIM_COLOR), 0);
+    lv_obj_clear_flag(dosing_cup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(dosing_cup, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t* cup_rim = lv_obj_create(screen_);
+    lv_obj_set_size(cup_rim, 104, 14);
+    lv_obj_align(cup_rim, LV_ALIGN_TOP_MID, 0, 248);
+    lv_obj_set_style_radius(cup_rim, 7, 0);
+    lv_obj_set_style_bg_color(cup_rim, lv_color_hex(DOSING_CUP_RIM_COLOR), 0);
+    lv_obj_set_style_border_width(cup_rim, 0, 0);
+    lv_obj_clear_flag(cup_rim, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(cup_rim, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t* coffee_bed = lv_obj_create(screen_);
+    lv_obj_set_size(coffee_bed, 82, 8);
+    lv_obj_align(coffee_bed, LV_ALIGN_TOP_MID, 0, 251);
+    lv_obj_set_style_radius(coffee_bed, 4, 0);
+    lv_obj_set_style_bg_color(coffee_bed, lv_color_hex(BEAN_COLOR), 0);
+    lv_obj_set_style_border_width(coffee_bed, 0, 0);
+    lv_obj_clear_flag(coffee_bed, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(coffee_bed, LV_OBJ_FLAG_CLICKABLE);
 
     for (int i = 0; i < PARTICLE_COUNT; ++i) {
         particles_[i] = lv_obj_create(screen_);
@@ -95,7 +117,7 @@ void GrindingScreenBeanFlow::create() {
     lv_label_set_text(weight_label_, "0.0g");
     lv_obj_set_style_text_font(weight_label_, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(weight_label_, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
-    lv_obj_align(weight_label_, LV_ALIGN_TOP_MID, 0, 314);
+    lv_obj_align(weight_label_, LV_ALIGN_TOP_MID, 0, 346);
 
     for (uint32_t i = 0; i < lv_obj_get_child_cnt(screen_); ++i) {
         lv_obj_clear_flag(lv_obj_get_child(screen_, i), LV_OBJ_FLAG_CLICKABLE);
