@@ -25,7 +25,7 @@ class Grinder;
 // Flash storage settings
 #define GRIND_SESSIONS_DIR "/sessions"                      // Directory for individual session files
 #define SESSION_FILE_FORMAT "/sessions/session_%lu.bin"    // Individual session file naming format
-#define MAX_STORED_SESSIONS_FLASH 10                        // Maximum sessions to keep in flash (configurable)
+#define MAX_STORED_SESSIONS_FLASH 30                        // Maximum sessions to keep in flash (configurable)
 
 #pragma pack(push, 1)
 
