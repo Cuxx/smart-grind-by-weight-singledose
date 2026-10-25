@@ -78,6 +78,7 @@ struct GrindController {
     static constexpr const char* PREF_KEY_GRIND_FRESHNESS_HOURS = "freshness";
     bool save_motor_latency(float);
     bool save_coast_ratio(float);
+    bool save_auto_coast_calibration(bool value) { return preferences->putBool("auto_coast", value) == sizeof(bool); }
     bool save_single_dose_timeout(uint32_t) { return true; }
 };
 struct ProfileController {
@@ -137,7 +138,7 @@ int main() {
     strcpy(update.screensaver_style, "gaggimate");
     assert(api.apply_settings(update));
     const int total_writes = Preferences::writes, total_opens = Preferences::opens;
-    assert(total_writes == 20 && total_opens == 10);
+    assert(total_writes == 21 && total_opens == 10);
     assert(control.motor_response_latency_ms == 100 && control.coast_ratio_ == 2);
     // Applying a legacy form preserves the current panel-off values while
     // still using the checked persistence path.
@@ -154,9 +155,9 @@ int main() {
         assert(!api.apply_settings(update));
         assert(Preferences::writes == total_writes);
         if (failure == 4) assert(control.coast_ratio_ == 1);
-        if (failure == 5) assert(control.motor_response_latency_ms == 50);
-        if (failure == 14) assert(hw.display.brightness == 0.5f);
-        if (failure >= 17) assert(gaggimate_status_client.enabled);
+        if (failure == 6) assert(control.motor_response_latency_ms == 50);
+        if (failure == 15) assert(hw.display.brightness == 0.5f);
+        if (failure >= 18) assert(gaggimate_status_client.enabled);
     }
     for (int failure = 1; failure <= total_opens; ++failure) {
         Preferences::reset(); Preferences::fail_open = failure;

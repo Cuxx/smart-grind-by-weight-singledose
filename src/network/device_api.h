@@ -26,6 +26,7 @@ struct DeviceSettingsUpdate {
     float purge_amount_g = 1.0f;
     float freshness_hours = 8.0f;
     float coast_ratio = 1.0f;
+    bool auto_coast_calibration = false;
     float motor_latency_ms = 50.0f;
     bool logging_enabled = false;
     bool swipe_enabled = false;

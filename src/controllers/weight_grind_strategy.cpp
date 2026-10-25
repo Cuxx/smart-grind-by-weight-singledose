@@ -102,7 +102,8 @@ void WeightGrindStrategy::run_predictive_phase(GrindController& controller,
             float current_flow_rate = controller.weight_sensor->get_flow_rate(flow_rate_calc_window_ms);
 
             if (current_flow_rate > GRIND_FLOW_DETECTION_THRESHOLD_GPS) {
-                controller.motor_stop_target_weight = ((controller.grind_latency_ms * controller.get_coast_ratio()) /
+                controller.predictive_stop_flow_rate_ = current_flow_rate;
+                controller.motor_stop_target_weight = ((controller.grind_latency_ms * controller.get_coast_ratio_for_session()) /
                                                        (float)SYS_MS_PER_SECOND) * current_flow_rate;
             }
         }
@@ -113,6 +114,8 @@ void WeightGrindStrategy::run_predictive_phase(GrindController& controller,
         loop_data.current_weight >= (controller.target_weight - controller.motor_stop_target_weight)) {
         controller.grinder->stop();
         controller.predictive_end_weight = loop_data.current_weight;
+        controller.record_predictive_stop(loop_data.current_weight, controller.grind_latency_ms,
+                                           controller.predictive_stop_flow_rate_);
         controller.pulse_flow_rate = controller.weight_sensor->get_flow_rate_95th_percentile(2500);
         controller.switch_phase(GrindPhase::PULSE_SETTLING, loop_data);
     }
@@ -166,7 +169,13 @@ void WeightGrindStrategy::run_pulse_settling_phase(GrindController& controller,
     }
 
     if (loop_data.now - controller.phase_start_time >= controller.grind_latency_ms + GRIND_MOTOR_SETTLING_TIME_MS) {
-        if (controller.weight_sensor->check_settling_complete(GRIND_MOTOR_SETTLING_TIME_MS)) {
+        float settled_weight = 0.0f;
+        if (controller.weight_sensor->check_settling_complete(GRIND_MOTOR_SETTLING_TIME_MS, &settled_weight)) {
+            // This is the sole main-stop observation, before PULSE_DECISION can
+            // schedule a correction pulse. Later pulse settling never records it.
+            if (!controller.main_stop_settled_) {
+                controller.record_main_stop_settled_weight(settled_weight);
+            }
             controller.switch_phase(GrindPhase::PULSE_DECISION, loop_data);
         }
     }

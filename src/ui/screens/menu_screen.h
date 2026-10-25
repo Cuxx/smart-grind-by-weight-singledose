@@ -96,6 +96,8 @@ private:
     lv_obj_t* grind_freshness_hours_label;
     lv_obj_t* coast_ratio_slider;
     lv_obj_t* coast_ratio_label;
+    lv_obj_t* auto_coast_calibration_toggle;
+    lv_obj_t* coast_calibration_reset_button;
     lv_obj_t* motor_latency_slider;
     lv_obj_t* motor_latency_label;
     lv_obj_t* single_dose_timeout_slider;
@@ -209,6 +211,8 @@ public:
     lv_obj_t* get_grinder_purge_amount_slider() const { return grinder_purge_amount_slider; }
     lv_obj_t* get_grind_freshness_hours_slider() const { return grind_freshness_hours_slider; }
     lv_obj_t* get_coast_ratio_slider() const { return coast_ratio_slider; }
+    lv_obj_t* get_auto_coast_calibration_toggle() const { return auto_coast_calibration_toggle; }
+    void set_coast_ratio_editable(bool editable);
     lv_obj_t* get_motor_latency_slider() const { return motor_latency_slider; }
     lv_obj_t* get_single_dose_timeout_slider() const { return single_dose_timeout_slider; }
     lv_obj_t* get_single_dose_timeout_label() const { return single_dose_timeout_label; }

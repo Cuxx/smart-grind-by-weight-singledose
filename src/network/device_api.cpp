@@ -573,6 +573,9 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
     settings.purge_amount_g = value("purge_amount_g").toFloat();
     settings.freshness_hours = value("freshness_hours").toFloat();
     settings.coast_ratio = value("coast_ratio").toFloat();
+    settings.auto_coast_calibration = request->hasParam("auto_coast_calibration", true)
+                                       ? form_bool(value("auto_coast_calibration"))
+                                       : grind_controller_->get_auto_coast_calibration();
     settings.motor_latency_ms = request->hasParam("motor_latency_ms", true)
                                     ? value("motor_latency_ms").toFloat()
                                     : grind_controller_->get_motor_response_latency();
@@ -776,6 +779,7 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     saved = (grinder->putFloat(GrindController::PREF_KEY_GRINDER_AMOUNT_G, settings.purge_amount_g) == sizeof(float)) && saved;
     saved = (grinder->putFloat(GrindController::PREF_KEY_GRIND_FRESHNESS_HOURS, settings.freshness_hours) == sizeof(float)) && saved;
     saved = grind_controller_->save_coast_ratio(settings.coast_ratio) && saved;
+    saved = grind_controller_->save_auto_coast_calibration(settings.auto_coast_calibration) && saved;
     saved = grind_controller_->save_motor_latency(settings.motor_latency_ms) && saved;
     saved = grind_controller_->save_single_dose_timeout(settings.single_dose_timeout_s) && saved;
     if (settings.has_tab_manual) {
@@ -956,7 +960,7 @@ void DeviceApi::refresh_settings_cache() {
              "{\"id\":2,\"name\":\"%s\",\"weight\":%.2f,\"time\":%.2f}],"
              "\"automatic\":{\"start\":%s,\"threshold_g\":%.1f,\"return\":%s},"
              "\"purge\":{\"mode\":%d,\"amount_g\":%.2f,\"freshness_hours\":%.2f},"
-             "\"coast_ratio\":%.2f,\"motor_latency_ms\":%.0f,"
+             "\"coast_ratio\":%.2f,\"auto_coast_calibration\":%s,\"motor_latency_ms\":%.0f,"
              "\"logging_enabled\":%s,\"swipe_enabled\":%s,"
              "\"single_dose_timeout_s\":%lu,"
              "\"display\":{\"brightness\":%d,\"screensaver_brightness\":%d,"
@@ -979,6 +983,7 @@ void DeviceApi::refresh_settings_cache() {
                         USER_AUTO_GRIND_TRIGGER_MIN_G, USER_AUTO_GRIND_TRIGGER_MAX_G),
              read_bool("autogrind", "auto_return", false) ? "true" : "false",
              purge_mode, purge_amount, freshness, grind_controller_->get_coast_ratio(),
+             grind_controller_->get_auto_coast_calibration() ? "true" : "false",
              grind_controller_->get_motor_response_latency(),
              read_bool("logging", "enabled", true) ? "true" : "false",
              read_bool("swipe", "enabled", false) ? "true" : "false",

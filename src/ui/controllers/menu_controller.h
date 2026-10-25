@@ -44,6 +44,8 @@ public:
     void handle_grind_freshness_hours_slider_released();
     void handle_coast_ratio_slider();
     void handle_coast_ratio_slider_released();
+    void handle_auto_coast_calibration_toggle();
+    void handle_coast_calibration_reset();
     void handle_motor_latency_slider();
     void handle_motor_latency_slider_released();
     void handle_single_dose_timeout_slider();
