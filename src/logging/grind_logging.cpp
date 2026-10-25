@@ -147,7 +147,7 @@ void GrindLogger::start_grind_session(const GrindSessionDescriptor& descriptor, 
 
 
 void GrindLogger::end_grind_session(const char* final_result, float final_weight, uint8_t pulse_count,
-                                   uint32_t completed_at_ms) {
+                                   uint32_t completed_at_ms, bool auto_coast_calibrated) {
     if (!current_session || !logging_active) {
         return;
     }
@@ -156,6 +156,9 @@ void GrindLogger::end_grind_session(const char* final_result, float final_weight
     current_session->error_grams = current_session->target_weight - final_weight;
     current_session->total_time_ms = completed_at_ms - session_start_time;
     current_session->pulse_count = pulse_count;
+    if (auto_coast_calibrated) {
+        current_session->reserved[0] |= GRIND_SESSION_FLAG_AUTO_COAST_CALIBRATED;
+    }
     strncpy(current_session->result_status, final_result, sizeof(current_session->result_status) - 1);
 
     // Finalize motor time tracking - if motor is still on, count the final period

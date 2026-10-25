@@ -551,7 +551,7 @@ void DeviceWebServer::configure_routes() {
                 "\"target_weight\":%.2f,\"target_time_ms\":%lu,\"final_weight\":%.2f,"
                 "\"error_grams\":%.2f,\"time_error_ms\":%ld,\"duration_ms\":%lu,"
                 "\"motor_time_ms\":%lu,\"pulses\":%u,\"result\":\"%s\","
-                "\"events\":%u,\"measurements\":%u,\"schema\":%u}",
+                "\"events\":%u,\"measurements\":%u,\"schema\":%u,\"auto_coast_calibrated\":%s}",
                 static_cast<unsigned long>(id), static_cast<unsigned long>(session.session_timestamp),
                 session.profile_id, session.grind_mode == 1 ? "time" : (session.grind_mode == 2 ? "singledose" : "weight"),
                 session.target_weight, static_cast<unsigned long>(session.target_time_ms),
@@ -559,7 +559,8 @@ void DeviceWebServer::configure_routes() {
                 static_cast<unsigned long>(session.total_time_ms),
                 static_cast<unsigned long>(session.total_motor_on_time_ms), session.pulse_count,
                 json_escape(String(result)).c_str(), header.event_count, header.measurement_count,
-                header.schema_version);
+                header.schema_version,
+                (session.reserved[0] & GRIND_SESSION_FLAG_AUTO_COAST_CALIBRATED) ? "true" : "false");
         }
         response->print("]}");
         response->addHeader("Cache-Control", "no-store");

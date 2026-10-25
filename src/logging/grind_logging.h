@@ -49,6 +49,8 @@ enum GrindEventFlags : uint8_t {
     GRIND_EVENT_FLAG_PULSE_PHASE = 1 << 2   // Phase represents a pulse or settling after a pulse
 };
 
+constexpr uint8_t GRIND_SESSION_FLAG_AUTO_COAST_CALIBRATED = 1 << 0;
+
 // Discrete, low-frequency events summarizing a phase.
 struct GrindEvent {
     uint32_t timestamp_ms;            // Relative to session start
@@ -125,7 +127,7 @@ struct GrindSession {
     uint8_t  max_pulse_attempts;      // Configured max pulse attempts
     uint8_t  pulse_count;             // Pulses executed
     uint8_t  termination_reason;      // See GrindTerminationReason
-    uint8_t  reserved[3];             // Alignment + future expansion
+    uint8_t  reserved[3];             // Bit 0: auto-coast calibration accepted
     char     result_status[16];       // Null-terminated status string
 
     GrindSession() {
@@ -174,7 +176,7 @@ public:
     // Session management
     void start_grind_session(const GrindSessionDescriptor& descriptor, float start_weight);
     void end_grind_session(const char* final_result, float final_weight, uint8_t pulse_count,
-                           uint32_t completed_at_ms);
+                           uint32_t completed_at_ms, bool auto_coast_calibrated = false);
     void discard_current_session();         // Discard current session without saving
     
     // Logging methods

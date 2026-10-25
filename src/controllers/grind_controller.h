@@ -34,6 +34,7 @@ struct FlashOpRequest {
     float start_weight;      // For START_GRIND_SESSION (pre-tare snapshot)
     float final_weight;      // For END_GRIND_SESSION
     uint8_t pulse_count;     // For END_GRIND_SESSION
+    bool auto_coast_calibrated; // Coast learning was accepted for this session
     uint32_t completed_at_ms; // Absolute clock at terminal phase entry, not save time
     uint32_t motor_runtime_ms; // For UPDATE_MANUAL_RUNTIME
 };
@@ -184,6 +185,7 @@ private:
     float predictive_stop_latency_ms_;
     float predictive_stop_flow_rate_;
     float main_stop_settled_weight_;
+    bool auto_coast_calibrated_for_session_ = false;
 
     // Grind freshness tracking
     bool grinder_purged_since_boot;      // Tracks if grinder has been used since boot (RAM only)

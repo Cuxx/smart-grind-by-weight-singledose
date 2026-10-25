@@ -185,6 +185,7 @@ bool GrindController::start_grind(float target, uint32_t time_ms, GrindMode grin
     coast_ratio_for_session_ = coast_ratio_;
     predictive_stop_recorded_ = false;
     main_stop_settled_ = false;
+    auto_coast_calibrated_for_session_ = false;
     predictive_stop_weight_ = 0.0f;
     predictive_stop_latency_ms_ = 0.0f;
     predictive_stop_flow_rate_ = 0.0f;
@@ -1136,6 +1137,7 @@ bool GrindController::queue_terminal_session() {
     strncpy(request.result_string, result, sizeof(request.result_string) - 1);
     request.final_weight = final_weight;
     request.pulse_count = pulse_attempts;
+    request.auto_coast_calibrated = auto_coast_calibrated_for_session_;
     // The terminal phase timestamp survives queue-full retries and UI delays.
     request.completed_at_ms = static_cast<uint32_t>(phase_start_time);
     session_end_flash_queued = queue_flash_operation(request);
@@ -1185,7 +1187,7 @@ void GrindController::process_queued_flash_operations() {
                 LOG_BLE("[%lums FLASH_OP] Processing END_GRIND_SESSION on Core 1: %s, %.2fg, %d pulses\n", 
                         millis(), request.result_string, request.final_weight, request.pulse_count);
                 grind_logger.end_grind_session(request.result_string, request.final_weight, request.pulse_count,
-                                               request.completed_at_ms);
+                                               request.completed_at_ms, request.auto_coast_calibrated);
                 break;
 
             case FlashOpRequest::UPDATE_MANUAL_RUNTIME:
@@ -1467,6 +1469,7 @@ void GrindController::apply_auto_coast_calibration() {
                                         GRIND_LATENCY_TO_COAST_RATIO_MIN,
                                         GRIND_LATENCY_TO_COAST_RATIO_MAX);
     if (save_coast_ratio(next_ratio)) {
+        auto_coast_calibrated_for_session_ = true;
         LOG_BLE("Auto coast calibration: %.2f -> %.2f (observed %.2f)\n",
                 coast_ratio_for_session_, next_ratio, observed_ratio);
     }
