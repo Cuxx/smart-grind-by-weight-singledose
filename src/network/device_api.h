@@ -29,6 +29,7 @@ struct DeviceSettingsUpdate {
     bool auto_coast_calibration = false;
     float motor_latency_ms = 50.0f;
     bool logging_enabled = false;
+    bool log_single_dose = false;
     bool swipe_enabled = false;
     int brightness_percent = 100;
     int screensaver_brightness_percent = 35;

@@ -102,6 +102,8 @@ private:
     lv_obj_t* motor_latency_label;
     lv_obj_t* single_dose_timeout_slider;
     lv_obj_t* single_dose_timeout_label;
+    lv_obj_t* log_single_dose_toggle;
+    lv_obj_t* single_dose_log_hint_label;
     lv_obj_t* grind_tab_manual_toggle;
     lv_obj_t* grind_tab_single_toggle;
     lv_obj_t* grind_tab_double_toggle;
@@ -217,6 +219,8 @@ public:
     lv_obj_t* get_single_dose_timeout_slider() const { return single_dose_timeout_slider; }
     lv_obj_t* get_single_dose_timeout_label() const { return single_dose_timeout_label; }
     void update_single_dose_timeout_display(uint32_t seconds);
+    lv_obj_t* get_log_single_dose_toggle() const { return log_single_dose_toggle; }
+    void set_log_single_dose_state(bool enabled, bool auto_coast_active);
     lv_obj_t* get_grind_tab_manual_toggle() const { return grind_tab_manual_toggle; }
     lv_obj_t* get_grind_tab_single_toggle() const { return grind_tab_single_toggle; }
     lv_obj_t* get_grind_tab_double_toggle() const { return grind_tab_double_toggle; }

@@ -61,12 +61,14 @@ int main() {
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include "src/controllers/grind_mode.h"
 #include "src/controllers/grind_session_result.h"
 ''' + reason_enum + classify + r'''
 struct FlashOpRequest {
  enum { END_GRIND_SESSION }; int operation_type;
  char result_string[32]; float final_weight; uint8_t pulse_count;
  bool auto_coast_calibrated;
+ bool save_to_flash;
  uint32_t completed_at_ms;
 };
 struct Logger { bool is_logging_active() { return true; } } grind_logger;
@@ -74,11 +76,13 @@ enum class GrindPhase { COMPLETED, TIMEOUT };
 struct Controller {
  GrindSessionResult last_session_result_;
  GrindPhase phase=GrindPhase::TIMEOUT;
+ GrindMode mode=GrindMode::WEIGHT;
  bool accept=false;
  bool session_end_flash_queued=false;
  uint32_t phase_start_time=1234;
  float final_weight=12; uint8_t pulse_attempts=2;
  bool auto_coast_calibrated_for_session_=false;
+ bool get_effective_log_single_dose() const { return false; }
  FlashOpRequest stored{};
  bool queue_flash_operation(const FlashOpRequest& request) { stored=request; return accept; }
  bool terminal() {

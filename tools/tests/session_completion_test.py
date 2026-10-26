@@ -49,6 +49,7 @@ struct FlashOpRequest {
     float start_weight = 0, final_weight = 0;
     uint8_t pulse_count = 0;
     bool auto_coast_calibrated = false;
+    bool save_to_flash = true;
     uint32_t motor_runtime_ms = 0;
     uint32_t completed_at_ms = 0;
 };
@@ -72,7 +73,7 @@ struct Logger {
     uint32_t completed_at_ms = 0;
     bool is_logging_active() const { return active; }
     void start_grind_session(const GrindSessionDescriptor&, float) { active = true; ++generation; }
-    void end_grind_session(const char* r, float w, uint8_t, uint32_t ended, bool = false) {
+    void end_grind_session(const char* r, float w, uint8_t, uint32_t ended, bool = false, bool = true) {
         completed_at_ms = ended;
         assert(active); ++saves; active = false; result = r; weight = w;
         saved_generations.push_back(generation);
@@ -105,6 +106,7 @@ public:
     float final_weight = 18.5f;
     int pulse_attempts = 3;
     bool auto_coast_calibrated_for_session_ = false;
+    bool get_effective_log_single_dose() const { return false; }
     uint32_t phase_start_time = 80;
     Queue* flash_op_queue;
     Grinder* grinder;

@@ -35,6 +35,7 @@ struct FlashOpRequest {
     float final_weight;      // For END_GRIND_SESSION
     uint8_t pulse_count;     // For END_GRIND_SESSION
     bool auto_coast_calibrated; // Coast learning was accepted for this session
+    bool save_to_flash = true; // Whether session should be persisted to flash
     uint32_t completed_at_ms; // Absolute clock at terminal phase entry, not save time
     uint32_t motor_runtime_ms; // For UPDATE_MANUAL_RUNTIME
 };
@@ -186,6 +187,7 @@ private:
     float predictive_stop_flow_rate_;
     float main_stop_settled_weight_;
     bool auto_coast_calibrated_for_session_ = false;
+    bool log_single_dose_ = false;
 
     // Grind freshness tracking
     bool grinder_purged_since_boot;      // Tracks if grinder has been used since boot (RAM only)
@@ -259,6 +261,8 @@ public:
     static constexpr const char* PREF_KEY_AUTO_COAST_CALIBRATION = "auto_coast";
     static constexpr const char* PREF_KEY_LAST_GRIND_RUNTIME = "last_grind_ms";
     static constexpr const char* PREF_KEY_SINGLE_DOSE_TIMEOUT_S = "sd_timeout_s";
+    static constexpr const char* PREF_KEY_LOG_SINGLE_DOSE = "log_sd";
+    static_assert(sizeof("log_sd") - 1 <= 15, "NVS preference key is too long");
     GrindMode get_mode() const { const auto control_lock = lock_control(); return mode; }
     GrindSessionDescriptor get_session_descriptor() const { const auto control_lock = lock_control(); return session_descriptor; }
     
@@ -301,6 +305,12 @@ public:
     void set_single_dose_timeout_s(uint32_t seconds);
     void load_single_dose_timeout();
     bool save_single_dose_timeout(uint32_t seconds);
+
+    // Single Dose history logging accessors
+    bool get_log_single_dose() const { const auto control_lock = lock_control(); return log_single_dose_; }
+    bool get_effective_log_single_dose() const { const auto control_lock = lock_control(); return auto_coast_calibration_ ? false : log_single_dose_; }
+    void load_log_single_dose();
+    bool save_log_single_dose(bool enabled);
 
     // Grind freshness accessors
     bool get_grinder_purged_since_boot() const { const auto control_lock = lock_control(); return grinder_purged_since_boot; }

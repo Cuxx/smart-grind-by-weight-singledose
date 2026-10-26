@@ -580,6 +580,9 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                                     ? value("motor_latency_ms").toFloat()
                                     : grind_controller_->get_motor_response_latency();
     settings.logging_enabled = form_bool(value("logging_enabled"));
+    settings.log_single_dose = request->hasParam("log_single_dose", true)
+                                   ? form_bool(value("log_single_dose"))
+                                   : grind_controller_->get_log_single_dose();
     settings.swipe_enabled = form_bool(value("swipe_enabled"));
     settings.brightness_percent = value("brightness_percent").toInt();
     settings.screensaver_brightness_percent = value("screensaver_brightness_percent").toInt();
@@ -782,6 +785,7 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     saved = grind_controller_->save_auto_coast_calibration(settings.auto_coast_calibration) && saved;
     saved = grind_controller_->save_motor_latency(settings.motor_latency_ms) && saved;
     saved = grind_controller_->save_single_dose_timeout(settings.single_dose_timeout_s) && saved;
+    saved = grind_controller_->save_log_single_dose(settings.log_single_dose) && saved;
     if (settings.has_tab_manual) {
         saved = (grinder->putBool("tab_manual", settings.tab_manual) == sizeof(bool)) && saved;
     }
@@ -961,7 +965,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"automatic\":{\"start\":%s,\"threshold_g\":%.1f,\"return\":%s},"
              "\"purge\":{\"mode\":%d,\"amount_g\":%.2f,\"freshness_hours\":%.2f},"
              "\"coast_ratio\":%.2f,\"auto_coast_calibration\":%s,\"motor_latency_ms\":%.0f,"
-             "\"logging_enabled\":%s,\"swipe_enabled\":%s,"
+             "\"logging_enabled\":%s,\"log_single_dose\":%s,\"effective_log_single_dose\":%s,\"swipe_enabled\":%s,"
              "\"single_dose_timeout_s\":%lu,"
              "\"display\":{\"brightness\":%d,\"screensaver_brightness\":%d,"
              "\"screensaver_startup\":%s,\"screensaver_sleep\":%s,"
@@ -986,6 +990,8 @@ void DeviceApi::refresh_settings_cache() {
              grind_controller_->get_auto_coast_calibration() ? "true" : "false",
              grind_controller_->get_motor_response_latency(),
              read_bool("logging", "enabled", true) ? "true" : "false",
+             grind_controller_->get_log_single_dose() ? "true" : "false",
+             grind_controller_->get_effective_log_single_dose() ? "true" : "false",
              read_bool("swipe", "enabled", false) ? "true" : "false",
              static_cast<unsigned long>(grind_controller_ ? grind_controller_->get_single_dose_timeout_s() : GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S),
              static_cast<int>(read_brightness("normal", USER_SCREEN_BRIGHTNESS_NORMAL) * 100.0f + 0.5f),

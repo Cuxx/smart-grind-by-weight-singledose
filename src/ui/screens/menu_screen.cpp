@@ -77,6 +77,8 @@ void MenuScreen::create(BluetoothManager* bluetooth, GrindController* grind_ctrl
     motor_latency_label = nullptr;
     single_dose_timeout_slider = nullptr;
     single_dose_timeout_label = nullptr;
+    log_single_dose_toggle = nullptr;
+    single_dose_log_hint_label = nullptr;
     auto_start_threshold_slider = nullptr;
     auto_start_threshold_label = nullptr;
     display_off_toggle = nullptr;
@@ -780,6 +782,8 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
                       lv_color_hex(THEME_COLOR_ACCENT),
                       GRIND_SINGLE_DOSE_TIMEOUT_MIN_S,
                       GRIND_SINGLE_DOSE_TIMEOUT_MAX_S);
+    create_toggle_row(parent, "Log History", &log_single_dose_toggle);
+    single_dose_log_hint_label = create_description_label(parent, "Store single dose in history");
 
     // Grinder Purging section
     create_separator(parent, "Purging");
@@ -877,6 +881,10 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
     if (auto_coast_calibration_toggle) {
         lv_obj_add_event_cb(auto_coast_calibration_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::AUTO_COAST_CALIBRATION_TOGGLE)));
+    }
+    if (log_single_dose_toggle) {
+        lv_obj_add_event_cb(log_single_dose_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::LOG_SINGLE_DOSE_TOGGLE)));
     }
     if (coast_calibration_reset_button) {
         lv_obj_add_event_cb(coast_calibration_reset_button, EventBridgeLVGL::dispatch_event, LV_EVENT_CLICKED,
@@ -1430,6 +1438,27 @@ void MenuScreen::set_coast_ratio_editable(bool editable) {
     else lv_obj_add_state(coast_ratio_slider, LV_STATE_DISABLED);
 }
 
+void MenuScreen::set_log_single_dose_state(bool enabled, bool auto_coast_active) {
+    if (!log_single_dose_toggle) return;
+    if (auto_coast_active) {
+        lv_obj_clear_state(log_single_dose_toggle, LV_STATE_CHECKED);
+        lv_obj_add_state(log_single_dose_toggle, LV_STATE_DISABLED);
+        if (single_dose_log_hint_label) {
+            lv_label_set_text(single_dose_log_hint_label, "Disabled (Auto Coast active)");
+        }
+    } else {
+        lv_obj_clear_state(log_single_dose_toggle, LV_STATE_DISABLED);
+        if (enabled) {
+            lv_obj_add_state(log_single_dose_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(log_single_dose_toggle, LV_STATE_CHECKED);
+        }
+        if (single_dose_log_hint_label) {
+            lv_label_set_text(single_dose_log_hint_label, "Store single dose in history");
+        }
+    }
+}
+
 void MenuScreen::update_motor_latency_label(float latency_ms) {
     if (!motor_latency_label) return;
     const float clamped = std::clamp(latency_ms,
@@ -1908,6 +1937,8 @@ void MenuScreen::update_grind_mode_toggles() {
         lv_slider_set_value(single_dose_timeout_slider, clamped_sd, LV_ANIM_OFF);
     }
     update_single_dose_timeout_display(single_dose_timeout_s);
+    const bool log_sd = grind_controller && grind_controller->get_log_single_dose();
+    set_log_single_dose_state(log_sd, auto_coast);
     update_grind_tab_toggles();
 }
 

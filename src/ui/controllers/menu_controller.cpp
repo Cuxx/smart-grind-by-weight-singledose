@@ -78,6 +78,7 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::COAST_RATIO_SLIDER_RELEASED, [this](lv_event_t*) { handle_coast_ratio_slider_released(); });
     EventBridgeLVGL::register_handler(ET::AUTO_COAST_CALIBRATION_TOGGLE, [this](lv_event_t*) { handle_auto_coast_calibration_toggle(); });
     EventBridgeLVGL::register_handler(ET::COAST_CALIBRATION_RESET, [this](lv_event_t*) { handle_coast_calibration_reset(); });
+    EventBridgeLVGL::register_handler(ET::LOG_SINGLE_DOSE_TOGGLE, [this](lv_event_t*) { handle_log_single_dose_toggle(); });
     EventBridgeLVGL::register_handler(ET::MOTOR_LATENCY_SLIDER, [this](lv_event_t*) { handle_motor_latency_slider(); });
     EventBridgeLVGL::register_handler(ET::MOTOR_LATENCY_SLIDER_RELEASED, [this](lv_event_t*) { handle_motor_latency_slider_released(); });
     EventBridgeLVGL::register_handler(ET::SINGLE_DOSE_TIMEOUT_SLIDER, [this](lv_event_t*) { handle_single_dose_timeout_slider(); });
@@ -802,7 +803,29 @@ void MenuUIController::handle_auto_coast_calibration_toggle() {
         ui_manager_->menu_screen.update_grind_mode_toggles();
     } else {
         ui_manager_->menu_screen.set_coast_ratio_editable(!controller->get_auto_coast_calibration());
+        ui_manager_->menu_screen.set_log_single_dose_state(
+            controller->get_log_single_dose(),
+            controller->get_auto_coast_calibration()
+        );
     }
+}
+
+void MenuUIController::handle_log_single_dose_toggle() {
+    if (!ui_manager_) return;
+    auto* toggle = ui_manager_->menu_screen.get_log_single_dose_toggle();
+    auto* controller = ui_manager_->get_grind_controller();
+    if (!toggle || !controller) return;
+
+    if (controller->get_auto_coast_calibration()) {
+        ui_manager_->menu_screen.set_log_single_dose_state(false, true);
+        return;
+    }
+
+    const bool is_checked = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    if (!controller->save_log_single_dose(is_checked)) {
+        LOG_BLE("Failed to save log single dose setting\n");
+    }
+    ui_manager_->menu_screen.set_log_single_dose_state(is_checked, false);
 }
 
 void MenuUIController::handle_coast_calibration_reset() {
