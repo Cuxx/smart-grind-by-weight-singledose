@@ -56,7 +56,7 @@ void ScreenTimeoutController::update() {
     const uint32_t ms_since_settings_applied = now - settings_applied_at_ms_;
     float weight_delta_g = 0.0f;
     if (sensor && sensor->get_weight_delta(1000U, &weight_delta_g) &&
-        display_weight_activity_detected(weight_delta_g, USER_WEIGHT_ACTIVITY_THRESHOLD_G)) {
+        display_weight_activity_detected(weight_delta_g, timing_settings_.wake_on_weight_threshold_g)) {
         last_weight_activity_ms_ = now;
     }
 
@@ -68,7 +68,9 @@ void ScreenTimeoutController::update() {
     if (preview_active_) {
         const bool grace_passed = (now - preview_started_at_ms_ >= 250);
         const bool touch_woke = grace_passed && (ms_since_touch < (now - preview_started_at_ms_));
-        const bool weight_woke = grace_passed && (now - last_weight_activity_ms_ < (now - preview_started_at_ms_));
+        const bool weight_woke = grace_passed &&
+                                 (timing_settings_.wake_on_weight_threshold_g > 0.0f) &&
+                                 (now - last_weight_activity_ms_ < (now - preview_started_at_ms_));
         if (touch_woke || weight_woke) {
             preview_active_ = false;
             restore_normal_display(display);
@@ -148,10 +150,11 @@ bool ScreenTimeoutController::apply_runtime_settings(bool verify_storage) {
     settings_applied_at_ms_ = millis();
     last_weight_activity_ms_ = settings_applied_at_ms_;
     last_settings_refresh_ms_ = settings_applied_at_ms_;
-    LOG_BLE("[DISPLAY] Runtime settings applied; screensaver=%lus panel-off=%s delay=%lus\n",
+    LOG_BLE("[DISPLAY] Runtime settings applied; screensaver=%lus panel-off=%s delay=%lus wake-weight=%.1fg\n",
             static_cast<unsigned long>(timing_settings_.idle_timeout_s),
             timing_settings_.display_off_enabled ? "ON" : "OFF",
-            static_cast<unsigned long>(timing_settings_.display_off_delay_s));
+            static_cast<unsigned long>(timing_settings_.display_off_delay_s),
+            timing_settings_.wake_on_weight_threshold_g);
 
     if (!ui_manager_ || !ui_manager_->hardware_manager) return false;
     DisplayManager* display = ui_manager_->hardware_manager->get_display();

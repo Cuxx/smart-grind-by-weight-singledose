@@ -14,6 +14,8 @@ assert.match(script, /logSd\.disabled=true/);
 assert.match(script, /resetCoastCalibration/);
 assert.match(page, /min="0\.25" max="1\.5"/);
 assert.match(page, /id="logSingleDose"/);
+assert.match(page, /id="wakeOnWeight"/);
+assert.match(script, /wake_on_weight_threshold_g:\$\('wakeOnWeight'\)\.value/);
 assert.match(page, /data-page="stats"/);
 assert.match(page, /id="stats" class="page"/);
 assert.match(script, /loadStats/);

@@ -41,6 +41,8 @@ struct DeviceSettingsUpdate {
     uint16_t display_off_delay_s = 3600;
     bool has_display_off_enabled = true;
     bool has_display_off_delay_s = true;
+    bool has_wake_on_weight = false;
+    float wake_on_weight_threshold_g = 1.0f;
     char screensaver_style[16] = "minimal";
     char clock_position[8] = "center";
     char clock_layout[16] = "horizontal";

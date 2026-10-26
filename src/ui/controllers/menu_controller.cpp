@@ -1016,7 +1016,8 @@ void MenuUIController::handle_display_off_toggle() {
     if (!ScreensaverSettings::save_timing(settings.idle_timeout_s,
                                           settings.startup_timeout_s,
                                           enabled,
-                                          settings.display_off_delay_s)) {
+                                          settings.display_off_delay_s,
+                                          settings.wake_on_weight_threshold_g)) {
         ui_manager_->menu_screen.update_screensaver_toggles();
         return;
     }

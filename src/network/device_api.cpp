@@ -603,6 +603,13 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                                        ? form_bool(value("display_off_enabled"))
                                        : settings.display_off_enabled;
     settings.display_off_delay_s = static_cast<uint16_t>(display_off_delay_s);
+    if (request->hasParam("wake_on_weight_threshold_g", true)) {
+        settings.has_wake_on_weight = true;
+        settings.wake_on_weight_threshold_g = value("wake_on_weight_threshold_g").toFloat();
+    } else {
+        const ScreensaverTimingSettings current_timing = ScreensaverSettings::load_timing();
+        settings.wake_on_weight_threshold_g = current_timing.wake_on_weight_threshold_g;
+    }
     const String screensaver_style = value("screensaver_style");
     strncpy(settings.screensaver_style, screensaver_style.c_str(), sizeof(settings.screensaver_style) - 1);
     if (request->hasParam("clock_position", true)) {
@@ -720,6 +727,8 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                  ScreensaverSettings::is_valid_idle_timeout(settings.screensaver_idle_timeout_s) &&
                  ScreensaverSettings::is_valid_startup_timeout(settings.screensaver_startup_timeout_s) &&
                  ScreensaverSettings::is_valid_display_off_delay(settings.display_off_delay_s) &&
+                 (!settings.has_wake_on_weight ||
+                  ScreensaverSettings::is_valid_wake_on_weight_threshold(settings.wake_on_weight_threshold_g)) &&
                  (screensaver_style == "orbit" || screensaver_style == "minimal" ||
                   screensaver_style == "blank" || screensaver_style == "clock" ||
                   (screensaver_style == "custom" && LittleFS.exists(BLE_IMAGE_FILENAME)) ||
@@ -861,7 +870,8 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     if (!ScreensaverSettings::save_timing(settings.screensaver_idle_timeout_s,
                                           settings.screensaver_startup_timeout_s,
                                           settings.display_off_enabled,
-                                          settings.display_off_delay_s)) {
+                                          settings.display_off_delay_s,
+                                          settings.wake_on_weight_threshold_g)) {
         saved = false;
     }
     Preferences screensaver;
@@ -970,7 +980,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"display\":{\"brightness\":%d,\"screensaver_brightness\":%d,"
              "\"screensaver_startup\":%s,\"screensaver_sleep\":%s,"
              "\"screensaver_idle_timeout_s\":%u,\"screensaver_startup_timeout_s\":%u,"
-             "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,"
+             "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,\"wake_on_weight_threshold_g\":%.1f,"
              "\"grind_layout\":%d,\"disc_color\":%d,"
              "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"clock_font\":\"%s\",\"timezone\":\"%s\","
              "\"has_custom_screensaver\":%s,\"has_custom_clock_font\":%s,"
@@ -1001,6 +1011,7 @@ void DeviceApi::refresh_settings_cache() {
              screensaver_timing.idle_timeout_s, screensaver_timing.startup_timeout_s,
              screensaver_timing.display_off_enabled ? "true" : "false",
              screensaver_timing.display_off_delay_s,
+             screensaver_timing.wake_on_weight_threshold_g,
              grind_layout,
              disc_color,
              screensaver_style.c_str(), clock_position.c_str(), clock_layout.c_str(), clock_color.c_str(), clock_font.c_str(), timezone.c_str(),
