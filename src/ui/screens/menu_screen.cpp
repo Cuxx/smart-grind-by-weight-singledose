@@ -250,8 +250,11 @@ void MenuScreen::create_menu_ui() {
         MenuScreen * self = static_cast<MenuScreen*>(lv_event_get_user_data(e));
         lv_obj_t * menu = static_cast<lv_obj_t *>(lv_event_get_target(e));
         lv_obj_t * cur = lv_menu_get_cur_main_page(menu);
-        if (cur == self->data_page || cur == self->stats_page) {
-            self->refresh_statistics();
+        if (cur == self->stats_page) {
+            // Lifetime stats live in RAM; refresh immediately with zero delay and no overlay.
+            self->refresh_lifetime_stats();
+        } else if (cur == self->data_page) {
+            self->refresh_log_data(true);
         }
 
         bool on_scale = (cur == self->scale_page);
@@ -1275,87 +1278,93 @@ void MenuScreen::update_ble_status() {
     }
 }
 
-void MenuScreen::refresh_statistics(bool show_overlay) {
+void MenuScreen::refresh_lifetime_stats() {
     if (!visible) return;
 
-    // Define the statistics loading operation
-    auto load_statistics_operation = [this]() {
-        // Log data
+    // Lifetime statistics are kept in RAM in StatisticsManager; instant sub-microsecond access with no I/O.
+    set_label_text_int(stat_total_grinds_label, statistics_manager.get_total_grinds());
+
+    // Shot type breakdown (Single/Double/Custom)
+    char shot_text[32];
+    snprintf(shot_text, sizeof(shot_text), "%lu / %lu / %lu",
+             statistics_manager.get_single_shots(),
+             statistics_manager.get_double_shots(),
+             statistics_manager.get_custom_shots());
+    lv_label_set_text(stat_shots_label, shot_text);
+
+    // Motor runtime (convert seconds to hours:minutes)
+    uint64_t runtime_ms = statistics_manager.get_motor_runtime_ms();
+    uint32_t runtime_sec = static_cast<uint32_t>(runtime_ms / 1000ULL);
+    uint32_t hours = runtime_sec / 3600;
+    uint32_t minutes = (runtime_sec % 3600) / 60;
+    uint32_t seconds = runtime_sec % 60;
+    char runtime_text[32];
+    if (runtime_sec >= 3600) {
+        snprintf(runtime_text, sizeof(runtime_text), "%luh %lum", hours, minutes);
+    } else if (runtime_sec >= 60) {
+        snprintf(runtime_text, sizeof(runtime_text), "%lum %lus", minutes, seconds);
+    } else if (runtime_ms >= 1000) {
+        float seconds_float = static_cast<float>(runtime_ms) / 1000.0f;
+        snprintf(runtime_text, sizeof(runtime_text), "%.1fs", seconds_float);
+    } else {
+        snprintf(runtime_text, sizeof(runtime_text), "%llums", static_cast<unsigned long long>(runtime_ms));
+    }
+    lv_label_set_text(stat_motor_runtime_label, runtime_text);
+
+    // Device uptime
+    char uptime_text[32];
+    uint32_t uptime_hours = statistics_manager.get_device_uptime_hrs();
+    uint32_t uptime_minutes = statistics_manager.get_device_uptime_min_remainder();
+    snprintf(uptime_text, sizeof(uptime_text), "%luh %lum", uptime_hours, uptime_minutes);
+    lv_label_set_text(stat_device_uptime_label, uptime_text);
+
+    // Total weight
+    char weight_text[32];
+    snprintf(weight_text, sizeof(weight_text), "%.2f kg", statistics_manager.get_total_weight_kg());
+    lv_label_set_text(stat_total_weight_label, weight_text);
+
+    // Mode grinds (Weight/Time)
+    char mode_text[32];
+    snprintf(mode_text, sizeof(mode_text), "%lu / %lu",
+             statistics_manager.get_weight_mode_grinds(),
+             statistics_manager.get_time_mode_grinds());
+    lv_label_set_text(stat_mode_grinds_label, mode_text);
+
+    // Average accuracy
+    char accuracy_text[32];
+    snprintf(accuracy_text, sizeof(accuracy_text), "%.2fg", statistics_manager.get_avg_accuracy_g());
+    lv_label_set_text(stat_avg_accuracy_label, accuracy_text);
+
+    // Total pulses (also show average)
+    char pulses_text[32];
+    snprintf(pulses_text, sizeof(pulses_text), "%lu (avg: %.1f)",
+             statistics_manager.get_total_pulses(),
+             statistics_manager.get_avg_pulses());
+    lv_label_set_text(stat_total_pulses_label, pulses_text);
+}
+
+void MenuScreen::refresh_log_data(bool show_overlay) {
+    if (!visible) return;
+
+    auto load_logs_operation = [this]() {
+        // Log data - LittleFS file counts require scanning flash directory
         set_label_text_int(sessions_label, grind_logger.get_total_flash_sessions());
         set_label_text_int(events_label, grind_logger.count_total_events_in_flash());
         set_label_text_int(measurements_label, grind_logger.count_total_measurements_in_flash());
-
-        // Lifetime statistics
-        set_label_text_int(stat_total_grinds_label, statistics_manager.get_total_grinds());
-
-        // Shot type breakdown (Single/Double/Custom)
-        char shot_text[32];
-        snprintf(shot_text, sizeof(shot_text), "%lu / %lu / %lu",
-                 statistics_manager.get_single_shots(),
-                 statistics_manager.get_double_shots(),
-                 statistics_manager.get_custom_shots());
-        lv_label_set_text(stat_shots_label, shot_text);
-
-        // Motor runtime (convert seconds to hours:minutes)
-        uint64_t runtime_ms = statistics_manager.get_motor_runtime_ms();
-        uint32_t runtime_sec = static_cast<uint32_t>(runtime_ms / 1000ULL);
-        uint32_t hours = runtime_sec / 3600;
-        uint32_t minutes = (runtime_sec % 3600) / 60;
-        uint32_t seconds = runtime_sec % 60;
-        char runtime_text[32];
-        if (runtime_sec >= 3600) {
-            snprintf(runtime_text, sizeof(runtime_text), "%luh %lum", hours, minutes);
-        } else if (runtime_sec >= 60) {
-            snprintf(runtime_text, sizeof(runtime_text), "%lum %lus", minutes, seconds);
-        } else if (runtime_ms >= 1000) {
-            float seconds_float = static_cast<float>(runtime_ms) / 1000.0f;
-            snprintf(runtime_text, sizeof(runtime_text), "%.1fs", seconds_float);
-        } else {
-            snprintf(runtime_text, sizeof(runtime_text), "%llums", static_cast<unsigned long long>(runtime_ms));
-        }
-        lv_label_set_text(stat_motor_runtime_label, runtime_text);
-
-        // Device uptime
-        char uptime_text[32];
-        uint32_t uptime_hours = statistics_manager.get_device_uptime_hrs();
-        uint32_t uptime_minutes = statistics_manager.get_device_uptime_min_remainder();
-        snprintf(uptime_text, sizeof(uptime_text), "%luh %lum", uptime_hours, uptime_minutes);
-        lv_label_set_text(stat_device_uptime_label, uptime_text);
-
-        // Total weight
-        char weight_text[32];
-        snprintf(weight_text, sizeof(weight_text), "%.2f kg", statistics_manager.get_total_weight_kg());
-        lv_label_set_text(stat_total_weight_label, weight_text);
-
-        // Mode grinds (Weight/Time)
-        char mode_text[32];
-        snprintf(mode_text, sizeof(mode_text), "%lu / %lu",
-                 statistics_manager.get_weight_mode_grinds(),
-                 statistics_manager.get_time_mode_grinds());
-        lv_label_set_text(stat_mode_grinds_label, mode_text);
-
-        // Average accuracy
-        char accuracy_text[32];
-        snprintf(accuracy_text, sizeof(accuracy_text), "%.2fg", statistics_manager.get_avg_accuracy_g());
-        lv_label_set_text(stat_avg_accuracy_label, accuracy_text);
-
-        // Total pulses (also show average)
-        char pulses_text[32];
-        snprintf(pulses_text, sizeof(pulses_text), "%lu (avg: %.1f)",
-                 statistics_manager.get_total_pulses(),
-                 statistics_manager.get_avg_pulses());
-        lv_label_set_text(stat_total_pulses_label, pulses_text);
     };
 
-    // Used for when we reload the statistics after a data purge
-    if (!show_overlay){
-        load_statistics_operation();
+    if (!show_overlay) {
+        load_logs_operation();
         return;
     }
 
-    // Show blocking overlay while loading statistics
     auto& overlay = BlockingOperationOverlay::getInstance();
-    overlay.show_and_execute(BlockingOperation::LOADING_STATISTICS, load_statistics_operation);
+    overlay.show_and_execute(BlockingOperation::LOADING_STATISTICS, load_logs_operation);
+}
+
+void MenuScreen::refresh_statistics(bool show_overlay) {
+    refresh_lifetime_stats();
+    refresh_log_data(show_overlay);
 }
 
 void MenuScreen::update_brightness_sliders() {

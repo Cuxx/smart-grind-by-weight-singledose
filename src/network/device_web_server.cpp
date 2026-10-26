@@ -21,6 +21,7 @@
 #include "../hardware/hardware_manager.h"
 #include "../logging/grind_logging.h"
 #include "../logging/diagnostic_log.h"
+#include "../system/statistics_manager.h"
 #include "network_manager.h"
 #include "device_api.h"
 #include "ota_stream.h"
@@ -492,6 +493,47 @@ void DeviceWebServer::configure_routes() {
         AsyncWebServerResponse* response = request->beginResponse(
             200, "text/plain; charset=utf-8", diagnostic_log_snapshot());
         response->addHeader("Cache-Control", "private, no-store");
+        request->send(response);
+    });
+
+    server_.on(AsyncURIMatcher::exact("/api/v1/statistics"), HTTP_GET, [this](AsyncWebServerRequest* request) {
+        if ((grind_controller_ && grind_controller_->is_active()) || ota_active_.load()) {
+            AsyncWebServerResponse* response = request->beginResponse(
+                503, "application/json", "{\"error\":\"Grind in progress\"}");
+            response->addHeader("Cache-Control", "no-store");
+            request->send(response);
+            return;
+        }
+
+        AsyncResponseStream* response = request->beginResponseStream("application/json");
+        response->printf(
+            "{\"api\":\"v1\","
+            "\"total_grinds\":%lu,"
+            "\"total_weight_kg\":%.2f,"
+            "\"motor_runtime_sec\":%lu,"
+            "\"motor_runtime_ms\":%llu,"
+            "\"device_uptime_hrs\":%lu,"
+            "\"device_uptime_min\":%lu,"
+            "\"shots\":{\"single\":%lu,\"double\":%lu,\"custom\":%lu},"
+            "\"modes\":{\"weight\":%lu,\"time\":%lu},"
+            "\"pulses\":{\"total\":%lu,\"time\":%lu,\"avg\":%.2f},"
+            "\"avg_accuracy_g\":%.2f}",
+            static_cast<unsigned long>(statistics_manager.get_total_grinds()),
+            statistics_manager.get_total_weight_kg(),
+            static_cast<unsigned long>(statistics_manager.get_motor_runtime_sec()),
+            static_cast<unsigned long long>(statistics_manager.get_motor_runtime_ms()),
+            static_cast<unsigned long>(statistics_manager.get_device_uptime_hrs()),
+            static_cast<unsigned long>(statistics_manager.get_device_uptime_min_remainder()),
+            static_cast<unsigned long>(statistics_manager.get_single_shots()),
+            static_cast<unsigned long>(statistics_manager.get_double_shots()),
+            static_cast<unsigned long>(statistics_manager.get_custom_shots()),
+            static_cast<unsigned long>(statistics_manager.get_weight_mode_grinds()),
+            static_cast<unsigned long>(statistics_manager.get_time_mode_grinds()),
+            static_cast<unsigned long>(statistics_manager.get_total_pulses()),
+            static_cast<unsigned long>(statistics_manager.get_time_pulses()),
+            statistics_manager.get_avg_pulses(),
+            statistics_manager.get_avg_accuracy_g());
+        response->addHeader("Cache-Control", "no-store");
         request->send(response);
     });
 

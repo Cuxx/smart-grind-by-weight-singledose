@@ -14,6 +14,10 @@ assert.match(script, /logSd\.disabled=true/);
 assert.match(script, /resetCoastCalibration/);
 assert.match(page, /min="0\.25" max="1\.5"/);
 assert.match(page, /id="logSingleDose"/);
+assert.match(page, /data-page="stats"/);
+assert.match(page, /id="stats" class="page"/);
+assert.match(script, /loadStats/);
+assert.match(script, /\/api\/v1\/statistics/);
 const save = script.slice(script.indexOf('let settingsSavePending=false;'),
   script.indexOf("$('chooseScreensaver').onclick"));
 assert.ok(save.includes('waitForSettingsSave'));

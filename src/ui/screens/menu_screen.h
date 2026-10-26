@@ -161,6 +161,8 @@ public:
     void update_diagnostics(WeightSensor* weight_sensor);
     void update_ble_status();
     void update_network_status();
+    void refresh_lifetime_stats();
+    void refresh_log_data(bool show_overlay = true);
     void refresh_statistics(bool show_overlay = true);
     void update_brightness_labels(int normal_percent = -1, int screensaver_percent = -1); // Use negative value to leave unchanged
     void update_brightness_sliders();
