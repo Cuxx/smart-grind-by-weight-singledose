@@ -228,6 +228,7 @@ void FileIOTask::process_flash_operation(const FlashOpRequest& request) {
                     request.save_to_flash ? "true" : "false");
             grind_logger.end_grind_session(request.result_string, request.final_weight, request.pulse_count,
                                            request.completed_at_ms, request.auto_coast_calibrated,
+                                           request.auto_coast_skip_reason,
                                            request.save_to_flash);
             break;
             

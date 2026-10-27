@@ -189,6 +189,7 @@ bool GrindController::start_grind(float target, uint32_t time_ms, GrindMode grin
     predictive_stop_recorded_ = false;
     main_stop_settled_ = false;
     auto_coast_calibrated_for_session_ = false;
+    auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::CALIBRATED;
     predictive_stop_weight_ = 0.0f;
     predictive_stop_latency_ms_ = 0.0f;
     predictive_stop_flow_rate_ = 0.0f;
@@ -1128,7 +1129,18 @@ void GrindController::process_queued_ui_events() {
 
 bool GrindController::queue_terminal_session() {
     if (phase != GrindPhase::COMPLETED && phase != GrindPhase::TIMEOUT) return false;
-    if (session_end_flash_queued || !grind_logger.is_logging_active()) return true;
+    if (session_end_flash_queued) return true;
+
+    if (!grind_logger.is_logging_active()) {
+        last_unlogged_session_.recorded = true;
+        const time_t now = time(nullptr);
+        last_unlogged_session_.timestamp = now >= 1609459200 ? static_cast<uint32_t>(now) : 0;
+        last_unlogged_session_.mode = static_cast<uint8_t>(mode);
+        last_unlogged_session_.final_weight = final_weight;
+        snprintf(last_unlogged_session_.reason, sizeof(last_unlogged_session_.reason),
+                 "History saving is disabled in Settings");
+        return true;
+    }
 
     FlashOpRequest request = {};
     request.operation_type = FlashOpRequest::END_GRIND_SESSION;
@@ -1141,7 +1153,24 @@ bool GrindController::queue_terminal_session() {
     request.final_weight = final_weight;
     request.pulse_count = pulse_attempts;
     request.auto_coast_calibrated = auto_coast_calibrated_for_session_;
+    request.auto_coast_skip_reason = static_cast<uint8_t>(auto_coast_skip_reason_for_session_);
     request.save_to_flash = (mode == GrindMode::MANUAL) ? get_effective_log_single_dose() : true;
+    if (!request.save_to_flash) {
+        last_unlogged_session_.recorded = true;
+        const time_t now = time(nullptr);
+        last_unlogged_session_.timestamp = now >= 1609459200 ? static_cast<uint32_t>(now) : 0;
+        last_unlogged_session_.mode = static_cast<uint8_t>(mode);
+        last_unlogged_session_.final_weight = final_weight;
+        if (auto_coast_calibration_) {
+            snprintf(last_unlogged_session_.reason, sizeof(last_unlogged_session_.reason),
+                     "Single Dose history disabled (Auto Coast active)");
+        } else {
+            snprintf(last_unlogged_session_.reason, sizeof(last_unlogged_session_.reason),
+                     "Single Dose history logging is off");
+        }
+    } else {
+        last_unlogged_session_.recorded = false;
+    }
     // The terminal phase timestamp survives queue-full retries and UI delays.
     request.completed_at_ms = static_cast<uint32_t>(phase_start_time);
     session_end_flash_queued = queue_flash_operation(request);
@@ -1193,6 +1222,7 @@ void GrindController::process_queued_flash_operations() {
                         request.save_to_flash ? "true" : "false");
                 grind_logger.end_grind_session(request.result_string, request.final_weight, request.pulse_count,
                                                request.completed_at_ms, request.auto_coast_calibrated,
+                                               request.auto_coast_skip_reason,
                                                request.save_to_flash);
                 break;
 
@@ -1450,23 +1480,49 @@ void GrindController::record_main_stop_settled_weight(float weight) {
 }
 
 void GrindController::apply_auto_coast_calibration() {
-    if (!auto_coast_calibration_ || mode != GrindMode::WEIGHT ||
-        last_session_result_ != GrindSessionResult::SUCCESS || pulse_attempts != 0 ||
-        mechanical_anomaly_count_ != 0 || !predictive_stop_recorded_ || !main_stop_settled_) {
+    auto_coast_calibrated_for_session_ = false;
+    auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::CALIBRATED;
+
+    if (!auto_coast_calibration_) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::AUTO_COAST_DISABLED;
         return;
     }
-    if (weight_sensor && !weight_sensor->noise_level_diagnostic()) return;
+    if (mode != GrindMode::WEIGHT) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::NOT_WEIGHT_MODE;
+        return;
+    }
+    if (last_session_result_ != GrindSessionResult::SUCCESS &&
+        last_session_result_ != GrindSessionResult::OVERSHOOT) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::SESSION_NOT_QUALIFIED;
+        return;
+    }
+    if (mechanical_anomaly_count_ != 0) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::MECHANICAL_ANOMALY;
+        return;
+    }
+    if (!predictive_stop_recorded_ || !main_stop_settled_) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::MAIN_STOP_NOT_SETTLED;
+        return;
+    }
+    if (weight_sensor && !weight_sensor->noise_level_diagnostic()) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::UNSTABLE_LOAD_CELL;
+        return;
+    }
 
     const float observed_coast = main_stop_settled_weight_ - predictive_stop_weight_;
     const float predicted_coast = (predictive_stop_latency_ms_ / static_cast<float>(SYS_MS_PER_SECOND)) *
                                   predictive_stop_flow_rate_;
     if (!std::isfinite(observed_coast) || !std::isfinite(predicted_coast) ||
         observed_coast < 0.0f || predicted_coast <= 0.0f) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::INVALID_MEASUREMENT;
         return;
     }
 
     const float observed_ratio = observed_coast / predicted_coast;
-    if (!std::isfinite(observed_ratio)) return;
+    if (!std::isfinite(observed_ratio)) {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::INVALID_MEASUREMENT;
+        return;
+    }
     const float bounded_observed = std::clamp(observed_ratio,
                                                GRIND_LATENCY_TO_COAST_RATIO_MIN,
                                                GRIND_LATENCY_TO_COAST_RATIO_MAX);
@@ -1476,8 +1532,11 @@ void GrindController::apply_auto_coast_calibration() {
                                         GRIND_LATENCY_TO_COAST_RATIO_MAX);
     if (save_coast_ratio(next_ratio)) {
         auto_coast_calibrated_for_session_ = true;
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::CALIBRATED;
         LOG_BLE("Auto coast calibration: %.2f -> %.2f (observed %.2f)\n",
                 coast_ratio_for_session_, next_ratio, observed_ratio);
+    } else {
+        auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::INVALID_MEASUREMENT;
     }
 }
 

@@ -20,6 +20,25 @@
 
 class DiagnosticsController;
 
+enum class AutoCoastSkipReason : uint8_t {
+    CALIBRATED = 0,            // Calibrated / learned successfully
+    AUTO_COAST_DISABLED = 1,   // Auto Coast disabled in settings
+    NOT_WEIGHT_MODE = 2,       // Time or Manual mode
+    UNSTABLE_LOAD_CELL = 3,    // Weight sensor noise detected
+    MECHANICAL_ANOMALY = 4,    // Vibration / bump detected
+    MAIN_STOP_NOT_SETTLED = 5, // Predictive stop or settling incomplete
+    INVALID_MEASUREMENT = 6,   // Negative coast or invalid flow
+    SESSION_NOT_QUALIFIED = 7  // Timeout, scale error, or max pulses without target
+};
+
+struct UnloggedSessionInfo {
+    bool recorded = false;
+    uint32_t timestamp = 0;
+    uint8_t mode = 0;
+    float final_weight = 0.0f;
+    char reason[64] = {0};
+};
+
 // Flash operation request structure for Core 0 → Core 1 communication
 struct FlashOpRequest {
     enum Type {
@@ -35,6 +54,7 @@ struct FlashOpRequest {
     float final_weight;      // For END_GRIND_SESSION
     uint8_t pulse_count;     // For END_GRIND_SESSION
     bool auto_coast_calibrated; // Coast learning was accepted for this session
+    uint8_t auto_coast_skip_reason = 0; // Reason code if coast learning was skipped
     bool save_to_flash = true; // Whether session should be persisted to flash
     uint32_t completed_at_ms; // Absolute clock at terminal phase entry, not save time
     uint32_t motor_runtime_ms; // For UPDATE_MANUAL_RUNTIME
@@ -187,6 +207,8 @@ private:
     float predictive_stop_flow_rate_;
     float main_stop_settled_weight_;
     bool auto_coast_calibrated_for_session_ = false;
+    AutoCoastSkipReason auto_coast_skip_reason_for_session_ = AutoCoastSkipReason::CALIBRATED;
+    UnloggedSessionInfo last_unlogged_session_{};
     bool log_single_dose_ = false;
 
     // Grind freshness tracking
@@ -294,6 +316,8 @@ public:
     float get_coast_ratio() const { const auto control_lock = lock_control(); return coast_ratio_; }
     float get_coast_ratio_for_session() const { const auto control_lock = lock_control(); return coast_ratio_for_session_; }
     bool get_auto_coast_calibration() const { const auto control_lock = lock_control(); return auto_coast_calibration_; }
+    AutoCoastSkipReason get_auto_coast_skip_reason_for_session() const { const auto control_lock = lock_control(); return auto_coast_skip_reason_for_session_; }
+    UnloggedSessionInfo get_last_unlogged_session() const { const auto control_lock = lock_control(); return last_unlogged_session_; }
     void set_coast_ratio(float value);
     void load_coast_ratio();
     bool save_coast_ratio(float value);

@@ -25,7 +25,7 @@ class AutoCoastCalibrationTest(unittest.TestCase):
     def test_controller_lifecycle_guards_and_main_stop_boundary(self):
         controller = (ROOT / 'src/controllers/grind_controller.cpp').read_text()
         strategy = (ROOT / 'src/controllers/weight_grind_strategy.cpp').read_text()
-        for guard in ('coast_ratio_for_session_ = coast_ratio_;', 'last_session_result_ != GrindSessionResult::SUCCESS', 'pulse_attempts != 0', 'mechanical_anomaly_count_ != 0', '!weight_sensor->noise_level_diagnostic()'): self.assertIn(guard, controller)
+        for guard in ('coast_ratio_for_session_ = coast_ratio_;', 'last_session_result_ != GrindSessionResult::SUCCESS &&', 'last_session_result_ != GrindSessionResult::OVERSHOOT', 'mechanical_anomaly_count_ != 0', '!weight_sensor->noise_level_diagnostic()'): self.assertIn(guard, controller)
         api = (ROOT / 'src/network/device_api.cpp').read_text()
         page = (ROOT / 'src/network/device_page.h').read_text()
         self.assertIn('auto_coast_calibration', api)

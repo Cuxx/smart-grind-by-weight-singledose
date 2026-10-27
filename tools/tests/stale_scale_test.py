@@ -60,14 +60,18 @@ int main() {
         code = r'''
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <ctime>
 #include "src/controllers/grind_mode.h"
 #include "src/controllers/grind_session_result.h"
 ''' + reason_enum + classify + r'''
+struct UnloggedSessionInfo { bool recorded = false; uint32_t timestamp = 0; uint8_t mode = 0; float final_weight = 0; char reason[64] = {0}; };
 struct FlashOpRequest {
  enum { END_GRIND_SESSION }; int operation_type;
  char result_string[32]; float final_weight; uint8_t pulse_count;
  bool auto_coast_calibrated;
+ uint8_t auto_coast_skip_reason;
  bool save_to_flash;
  uint32_t completed_at_ms;
 };
@@ -82,6 +86,9 @@ struct Controller {
  uint32_t phase_start_time=1234;
  float final_weight=12; uint8_t pulse_attempts=2;
  bool auto_coast_calibrated_for_session_=false;
+ uint8_t auto_coast_skip_reason_for_session_=0;
+ bool auto_coast_calibration_=false;
+ UnloggedSessionInfo last_unlogged_session_{};
  bool get_effective_log_single_dose() const { return false; }
  FlashOpRequest stored{};
  bool queue_flash_operation(const FlashOpRequest& request) { stored=request; return accept; }

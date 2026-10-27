@@ -177,6 +177,7 @@ public:
     void start_grind_session(const GrindSessionDescriptor& descriptor, float start_weight);
     void end_grind_session(const char* final_result, float final_weight, uint8_t pulse_count,
                            uint32_t completed_at_ms, bool auto_coast_calibrated = false,
+                           uint8_t auto_coast_skip_reason = 0,
                            bool save_to_flash = true);
     void discard_current_session();         // Discard current session without saving
     

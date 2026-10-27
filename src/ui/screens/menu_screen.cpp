@@ -1433,9 +1433,13 @@ void MenuScreen::update_grind_freshness_hours_label(float hours) {
 
 void MenuScreen::update_coast_ratio_label(float ratio) {
     if (coast_ratio_label) {
-        char buffer[24];
+        char buffer[32];
         int percent = static_cast<int>(ratio * 100.0f + 0.5f);
-        snprintf(buffer, sizeof(buffer), "Coast Ratio: %d%%", percent);
+        if (auto_coast_calibration_toggle && lv_obj_has_state(auto_coast_calibration_toggle, LV_STATE_CHECKED)) {
+            snprintf(buffer, sizeof(buffer), "Coast: %d%% (Auto)", percent);
+        } else {
+            snprintf(buffer, sizeof(buffer), "Coast Ratio: %d%%", percent);
+        }
         lv_label_set_text(coast_ratio_label, buffer);
     }
 }
@@ -1444,6 +1448,9 @@ void MenuScreen::set_coast_ratio_editable(bool editable) {
     if (!coast_ratio_slider) return;
     if (editable) lv_obj_clear_state(coast_ratio_slider, LV_STATE_DISABLED);
     else lv_obj_add_state(coast_ratio_slider, LV_STATE_DISABLED);
+    if (grind_controller) {
+        update_coast_ratio_label(grind_controller->get_coast_ratio());
+    }
 }
 
 void MenuScreen::set_log_single_dose_state(bool enabled, bool auto_coast_active) {
@@ -1917,13 +1924,13 @@ void MenuScreen::update_grind_mode_toggles() {
         lv_slider_set_value(coast_ratio_slider, slider_value, LV_ANIM_OFF);
     }
 
-    update_coast_ratio_label(coast_ratio);
     const bool auto_coast = grind_controller && grind_controller->get_auto_coast_calibration();
     if (auto_coast_calibration_toggle) {
         if (auto_coast) lv_obj_add_state(auto_coast_calibration_toggle, LV_STATE_CHECKED);
         else lv_obj_clear_state(auto_coast_calibration_toggle, LV_STATE_CHECKED);
     }
     set_coast_ratio_editable(!auto_coast);
+    update_coast_ratio_label(coast_ratio);
 
     float motor_latency_ms = GRIND_MOTOR_RESPONSE_LATENCY_DEFAULT_MS;
     if (grind_controller) {

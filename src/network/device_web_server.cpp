@@ -602,9 +602,23 @@ void DeviceWebServer::configure_routes() {
                 static_cast<unsigned long>(session.total_motor_on_time_ms), session.pulse_count,
                 json_escape(String(result)).c_str(), header.event_count, header.measurement_count,
                 header.schema_version,
-                (session.reserved[0] & GRIND_SESSION_FLAG_AUTO_COAST_CALIBRATED) ? "true" : "false");
+                (session.reserved[0] & GRIND_SESSION_FLAG_AUTO_COAST_CALIBRATED) ? "true" : "false",
+                session.reserved[1]);
         }
-        response->print("]}");
+        response->print("]");
+        if (grind_controller_) {
+            const auto unlogged = grind_controller_->get_last_unlogged_session();
+            if (unlogged.recorded) {
+                response->printf(
+                    ",\"last_unlogged\":{\"timestamp\":%lu,\"mode\":\"%s\","
+                    "\"final_weight\":%.2f,\"reason\":\"%s\"}",
+                    static_cast<unsigned long>(unlogged.timestamp),
+                    unlogged.mode == 1 ? "time" : (unlogged.mode == 2 ? "singledose" : "weight"),
+                    unlogged.final_weight,
+                    json_escape(String(unlogged.reason)).c_str());
+            }
+        }
+        response->print("}");
         response->addHeader("Cache-Control", "no-store");
         request->send(response);
     });
