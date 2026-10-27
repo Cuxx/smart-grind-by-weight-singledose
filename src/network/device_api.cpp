@@ -573,10 +573,16 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
     settings.purge_amount_g = value("purge_amount_g").toFloat();
     settings.freshness_hours = value("freshness_hours").toFloat();
     settings.coast_ratio = value("coast_ratio").toFloat();
+    settings.auto_coast_calibration = request->hasParam("auto_coast_calibration", true)
+                                       ? form_bool(value("auto_coast_calibration"))
+                                       : grind_controller_->get_auto_coast_calibration();
     settings.motor_latency_ms = request->hasParam("motor_latency_ms", true)
                                     ? value("motor_latency_ms").toFloat()
                                     : grind_controller_->get_motor_response_latency();
     settings.logging_enabled = form_bool(value("logging_enabled"));
+    settings.log_single_dose = request->hasParam("log_single_dose", true)
+                                   ? form_bool(value("log_single_dose"))
+                                   : grind_controller_->get_log_single_dose();
     settings.swipe_enabled = form_bool(value("swipe_enabled"));
     settings.brightness_percent = value("brightness_percent").toInt();
     settings.screensaver_brightness_percent = value("screensaver_brightness_percent").toInt();
@@ -597,6 +603,13 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                                        ? form_bool(value("display_off_enabled"))
                                        : settings.display_off_enabled;
     settings.display_off_delay_s = static_cast<uint16_t>(display_off_delay_s);
+    if (request->hasParam("wake_on_weight_threshold_g", true)) {
+        settings.has_wake_on_weight = true;
+        settings.wake_on_weight_threshold_g = value("wake_on_weight_threshold_g").toFloat();
+    } else {
+        const ScreensaverTimingSettings current_timing = ScreensaverSettings::load_timing();
+        settings.wake_on_weight_threshold_g = current_timing.wake_on_weight_threshold_g;
+    }
     const String screensaver_style = value("screensaver_style");
     strncpy(settings.screensaver_style, screensaver_style.c_str(), sizeof(settings.screensaver_style) - 1);
     if (request->hasParam("clock_position", true)) {
@@ -714,6 +727,8 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
                  ScreensaverSettings::is_valid_idle_timeout(settings.screensaver_idle_timeout_s) &&
                  ScreensaverSettings::is_valid_startup_timeout(settings.screensaver_startup_timeout_s) &&
                  ScreensaverSettings::is_valid_display_off_delay(settings.display_off_delay_s) &&
+                 (!settings.has_wake_on_weight ||
+                  ScreensaverSettings::is_valid_wake_on_weight_threshold(settings.wake_on_weight_threshold_g)) &&
                  (screensaver_style == "orbit" || screensaver_style == "minimal" ||
                   screensaver_style == "blank" || screensaver_style == "clock" ||
                   (screensaver_style == "custom" && LittleFS.exists(BLE_IMAGE_FILENAME)) ||
@@ -776,8 +791,10 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     saved = (grinder->putFloat(GrindController::PREF_KEY_GRINDER_AMOUNT_G, settings.purge_amount_g) == sizeof(float)) && saved;
     saved = (grinder->putFloat(GrindController::PREF_KEY_GRIND_FRESHNESS_HOURS, settings.freshness_hours) == sizeof(float)) && saved;
     saved = grind_controller_->save_coast_ratio(settings.coast_ratio) && saved;
+    saved = grind_controller_->save_auto_coast_calibration(settings.auto_coast_calibration) && saved;
     saved = grind_controller_->save_motor_latency(settings.motor_latency_ms) && saved;
     saved = grind_controller_->save_single_dose_timeout(settings.single_dose_timeout_s) && saved;
+    saved = grind_controller_->save_log_single_dose(settings.log_single_dose) && saved;
     if (settings.has_tab_manual) {
         saved = (grinder->putBool("tab_manual", settings.tab_manual) == sizeof(bool)) && saved;
     }
@@ -853,7 +870,8 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
     if (!ScreensaverSettings::save_timing(settings.screensaver_idle_timeout_s,
                                           settings.screensaver_startup_timeout_s,
                                           settings.display_off_enabled,
-                                          settings.display_off_delay_s)) {
+                                          settings.display_off_delay_s,
+                                          settings.wake_on_weight_threshold_g)) {
         saved = false;
     }
     Preferences screensaver;
@@ -956,13 +974,13 @@ void DeviceApi::refresh_settings_cache() {
              "{\"id\":2,\"name\":\"%s\",\"weight\":%.2f,\"time\":%.2f}],"
              "\"automatic\":{\"start\":%s,\"threshold_g\":%.1f,\"return\":%s},"
              "\"purge\":{\"mode\":%d,\"amount_g\":%.2f,\"freshness_hours\":%.2f},"
-             "\"coast_ratio\":%.2f,\"motor_latency_ms\":%.0f,"
-             "\"logging_enabled\":%s,\"swipe_enabled\":%s,"
+             "\"coast_ratio\":%.2f,\"auto_coast_calibration\":%s,\"motor_latency_ms\":%.0f,"
+             "\"logging_enabled\":%s,\"log_single_dose\":%s,\"effective_log_single_dose\":%s,\"swipe_enabled\":%s,"
              "\"single_dose_timeout_s\":%lu,"
              "\"display\":{\"brightness\":%d,\"screensaver_brightness\":%d,"
              "\"screensaver_startup\":%s,\"screensaver_sleep\":%s,"
              "\"screensaver_idle_timeout_s\":%u,\"screensaver_startup_timeout_s\":%u,"
-             "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,"
+             "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,\"wake_on_weight_threshold_g\":%.1f,"
              "\"grind_layout\":%d,\"disc_color\":%d,"
              "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"clock_font\":\"%s\",\"timezone\":\"%s\","
              "\"has_custom_screensaver\":%s,\"has_custom_clock_font\":%s,"
@@ -979,8 +997,11 @@ void DeviceApi::refresh_settings_cache() {
                         USER_AUTO_GRIND_TRIGGER_MIN_G, USER_AUTO_GRIND_TRIGGER_MAX_G),
              read_bool("autogrind", "auto_return", false) ? "true" : "false",
              purge_mode, purge_amount, freshness, grind_controller_->get_coast_ratio(),
+             grind_controller_->get_auto_coast_calibration() ? "true" : "false",
              grind_controller_->get_motor_response_latency(),
              read_bool("logging", "enabled", true) ? "true" : "false",
+             grind_controller_->get_log_single_dose() ? "true" : "false",
+             grind_controller_->get_effective_log_single_dose() ? "true" : "false",
              read_bool("swipe", "enabled", false) ? "true" : "false",
              static_cast<unsigned long>(grind_controller_ ? grind_controller_->get_single_dose_timeout_s() : GRIND_SINGLE_DOSE_TIMEOUT_DEFAULT_S),
              static_cast<int>(read_brightness("normal", USER_SCREEN_BRIGHTNESS_NORMAL) * 100.0f + 0.5f),
@@ -990,6 +1011,7 @@ void DeviceApi::refresh_settings_cache() {
              screensaver_timing.idle_timeout_s, screensaver_timing.startup_timeout_s,
              screensaver_timing.display_off_enabled ? "true" : "false",
              screensaver_timing.display_off_delay_s,
+             screensaver_timing.wake_on_weight_threshold_g,
              grind_layout,
              disc_color,
              screensaver_style.c_str(), clock_position.c_str(), clock_layout.c_str(), clock_color.c_str(), clock_font.c_str(), timezone.c_str(),

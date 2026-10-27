@@ -646,6 +646,7 @@
     LV_FONT_DECLARE(lv_font_montserrat_56) \
     /* LV_FONT_DECLARE(lv_font_montserrat_58) */ \
     LV_FONT_DECLARE(lv_font_montserrat_60) \
+    LV_FONT_DECLARE(lv_font_montserrat_bold_60) \
     LV_FONT_DECLARE(lv_font_montserrat_80) \
     LV_FONT_DECLARE(lv_font_montserrat_160)
 

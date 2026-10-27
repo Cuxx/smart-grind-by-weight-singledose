@@ -96,10 +96,14 @@ private:
     lv_obj_t* grind_freshness_hours_label;
     lv_obj_t* coast_ratio_slider;
     lv_obj_t* coast_ratio_label;
+    lv_obj_t* auto_coast_calibration_toggle;
+    lv_obj_t* coast_calibration_reset_button;
     lv_obj_t* motor_latency_slider;
     lv_obj_t* motor_latency_label;
     lv_obj_t* single_dose_timeout_slider;
     lv_obj_t* single_dose_timeout_label;
+    lv_obj_t* log_single_dose_toggle;
+    lv_obj_t* single_dose_log_hint_label;
     lv_obj_t* grind_tab_manual_toggle;
     lv_obj_t* grind_tab_single_toggle;
     lv_obj_t* grind_tab_double_toggle;
@@ -157,6 +161,8 @@ public:
     void update_diagnostics(WeightSensor* weight_sensor);
     void update_ble_status();
     void update_network_status();
+    void refresh_lifetime_stats();
+    void refresh_log_data(bool show_overlay = true);
     void refresh_statistics(bool show_overlay = true);
     void update_brightness_labels(int normal_percent = -1, int screensaver_percent = -1); // Use negative value to leave unchanged
     void update_brightness_sliders();
@@ -209,10 +215,14 @@ public:
     lv_obj_t* get_grinder_purge_amount_slider() const { return grinder_purge_amount_slider; }
     lv_obj_t* get_grind_freshness_hours_slider() const { return grind_freshness_hours_slider; }
     lv_obj_t* get_coast_ratio_slider() const { return coast_ratio_slider; }
+    lv_obj_t* get_auto_coast_calibration_toggle() const { return auto_coast_calibration_toggle; }
+    void set_coast_ratio_editable(bool editable);
     lv_obj_t* get_motor_latency_slider() const { return motor_latency_slider; }
     lv_obj_t* get_single_dose_timeout_slider() const { return single_dose_timeout_slider; }
     lv_obj_t* get_single_dose_timeout_label() const { return single_dose_timeout_label; }
     void update_single_dose_timeout_display(uint32_t seconds);
+    lv_obj_t* get_log_single_dose_toggle() const { return log_single_dose_toggle; }
+    void set_log_single_dose_state(bool enabled, bool auto_coast_active);
     lv_obj_t* get_grind_tab_manual_toggle() const { return grind_tab_manual_toggle; }
     lv_obj_t* get_grind_tab_single_toggle() const { return grind_tab_single_toggle; }
     lv_obj_t* get_grind_tab_double_toggle() const { return grind_tab_double_toggle; }

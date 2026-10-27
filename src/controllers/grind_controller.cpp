@@ -105,11 +105,14 @@ void GrindController::init(WeightSensor* lc, Grinder* gr, Preferences* prefs) {
     // Load motor response latency from preferences
     load_motor_latency();
 
-    // Load coast ratio from preferences
+    // Load coast ratio and automatic calibration preference.
     load_coast_ratio();
 
     // Load single dose timeout from preferences
     load_single_dose_timeout();
+
+    // Load single dose history logging preference
+    load_log_single_dose();
 }
 
 bool GrindController::start_grind(float target, uint32_t time_ms, GrindMode grind_mode) {
@@ -182,6 +185,14 @@ bool GrindController::start_grind(float target, uint32_t time_ms, GrindMode grin
     predictive_end_weight = 0;
     final_weight = 0;
     motor_stop_target_weight = GRIND_UNDERSHOOT_TARGET_G; // Start with a safe default
+    coast_ratio_for_session_ = coast_ratio_;
+    predictive_stop_recorded_ = false;
+    main_stop_settled_ = false;
+    auto_coast_calibrated_for_session_ = false;
+    predictive_stop_weight_ = 0.0f;
+    predictive_stop_latency_ms_ = 0.0f;
+    predictive_stop_flow_rate_ = 0.0f;
+    main_stop_settled_weight_ = 0.0f;
 
     time_grind_start_ms = 0;
 
@@ -888,6 +899,7 @@ void GrindController::switch_phase(GrindPhase new_phase, const GrindLoopData& lo
             }
         }
         last_session_result_ = session_result;
+        apply_auto_coast_calibration();
 
         // Update grind freshness tracking
         grinder_purged_since_boot = true;
@@ -1128,6 +1140,8 @@ bool GrindController::queue_terminal_session() {
     strncpy(request.result_string, result, sizeof(request.result_string) - 1);
     request.final_weight = final_weight;
     request.pulse_count = pulse_attempts;
+    request.auto_coast_calibrated = auto_coast_calibrated_for_session_;
+    request.save_to_flash = (mode == GrindMode::MANUAL) ? get_effective_log_single_dose() : true;
     // The terminal phase timestamp survives queue-full retries and UI delays.
     request.completed_at_ms = static_cast<uint32_t>(phase_start_time);
     session_end_flash_queued = queue_flash_operation(request);
@@ -1174,10 +1188,12 @@ void GrindController::process_queued_flash_operations() {
                 
             case FlashOpRequest::END_GRIND_SESSION:
                 // Perform the blocking flash operation on Core 1
-                LOG_BLE("[%lums FLASH_OP] Processing END_GRIND_SESSION on Core 1: %s, %.2fg, %d pulses\n", 
-                        millis(), request.result_string, request.final_weight, request.pulse_count);
+                LOG_BLE("[%lums FLASH_OP] Processing END_GRIND_SESSION on Core 1: %s, %.2fg, %d pulses (save_to_flash=%s)\n",
+                        millis(), request.result_string, request.final_weight, request.pulse_count,
+                        request.save_to_flash ? "true" : "false");
                 grind_logger.end_grind_session(request.result_string, request.final_weight, request.pulse_count,
-                                               request.completed_at_ms);
+                                               request.completed_at_ms, request.auto_coast_calibrated,
+                                               request.save_to_flash);
                 break;
 
             case FlashOpRequest::UPDATE_MANUAL_RUNTIME:
@@ -1360,6 +1376,7 @@ void GrindController::load_coast_ratio() {
     }
 
     coast_ratio_ = preferences->getFloat(PREF_KEY_COAST_RATIO, GRIND_LATENCY_TO_COAST_RATIO_DEFAULT);
+    auto_coast_calibration_ = preferences->getBool(PREF_KEY_AUTO_COAST_CALIBRATION, false);
 
     // Validate loaded value
     if (coast_ratio_ < GRIND_LATENCY_TO_COAST_RATIO_MIN ||
@@ -1393,6 +1410,75 @@ bool GrindController::save_coast_ratio(float value) {
     coast_ratio_ = value;
     LOG_BLE("Coast ratio: Saved %.2f to preferences\n", value);
     return true;
+}
+
+bool GrindController::save_auto_coast_calibration(bool enabled) {
+    const auto control_lock = lock_control();
+    if (!preferences) {
+        LOG_BLE("ERROR: Cannot save auto coast calibration - no preferences available\n");
+        return false;
+    }
+    if (preferences->putBool(PREF_KEY_AUTO_COAST_CALIBRATION, enabled) != sizeof(bool)) {
+        LOG_BLE("ERROR: Failed to save auto coast calibration to NVS\n");
+        return false;
+    }
+    auto_coast_calibration_ = enabled;
+    return true;
+}
+
+bool GrindController::reset_coast_calibration() {
+    return save_coast_ratio(GRIND_LATENCY_TO_COAST_RATIO_DEFAULT);
+}
+
+void GrindController::record_predictive_stop(float weight, float latency_ms, float flow_rate) {
+    if (!std::isfinite(weight) || !std::isfinite(latency_ms) || !std::isfinite(flow_rate) ||
+        latency_ms <= 0.0f || flow_rate <= 0.0f) {
+        predictive_stop_recorded_ = false;
+        return;
+    }
+    predictive_stop_weight_ = weight;
+    predictive_stop_latency_ms_ = latency_ms;
+    predictive_stop_flow_rate_ = flow_rate;
+    predictive_stop_recorded_ = true;
+}
+
+void GrindController::record_main_stop_settled_weight(float weight) {
+    if (predictive_stop_recorded_ && std::isfinite(weight)) {
+        main_stop_settled_weight_ = weight;
+        main_stop_settled_ = true;
+    }
+}
+
+void GrindController::apply_auto_coast_calibration() {
+    if (!auto_coast_calibration_ || mode != GrindMode::WEIGHT ||
+        last_session_result_ != GrindSessionResult::SUCCESS || pulse_attempts != 0 ||
+        mechanical_anomaly_count_ != 0 || !predictive_stop_recorded_ || !main_stop_settled_) {
+        return;
+    }
+    if (weight_sensor && !weight_sensor->noise_level_diagnostic()) return;
+
+    const float observed_coast = main_stop_settled_weight_ - predictive_stop_weight_;
+    const float predicted_coast = (predictive_stop_latency_ms_ / static_cast<float>(SYS_MS_PER_SECOND)) *
+                                  predictive_stop_flow_rate_;
+    if (!std::isfinite(observed_coast) || !std::isfinite(predicted_coast) ||
+        observed_coast < 0.0f || predicted_coast <= 0.0f) {
+        return;
+    }
+
+    const float observed_ratio = observed_coast / predicted_coast;
+    if (!std::isfinite(observed_ratio)) return;
+    const float bounded_observed = std::clamp(observed_ratio,
+                                               GRIND_LATENCY_TO_COAST_RATIO_MIN,
+                                               GRIND_LATENCY_TO_COAST_RATIO_MAX);
+    const float next_ratio = std::clamp(coast_ratio_ +
+                                        (bounded_observed - coast_ratio_) * GRIND_AUTO_COAST_CALIBRATION_SMOOTHING,
+                                        GRIND_LATENCY_TO_COAST_RATIO_MIN,
+                                        GRIND_LATENCY_TO_COAST_RATIO_MAX);
+    if (save_coast_ratio(next_ratio)) {
+        auto_coast_calibrated_for_session_ = true;
+        LOG_BLE("Auto coast calibration: %.2f -> %.2f (observed %.2f)\n",
+                coast_ratio_for_session_, next_ratio, observed_ratio);
+    }
 }
 
 void GrindController::set_coast_ratio(float value) {
@@ -1444,4 +1530,35 @@ bool GrindController::save_single_dose_timeout(uint32_t seconds) {
 
 void GrindController::set_single_dose_timeout_s(uint32_t seconds) {
     save_single_dose_timeout(seconds);
+}
+
+//==============================================================================
+// Single Dose History Logging Management
+//==============================================================================
+
+void GrindController::load_log_single_dose() {
+    const auto control_lock = lock_control();
+    if (!preferences) {
+        log_single_dose_ = false;
+        return;
+    }
+    log_single_dose_ = preferences->getBool(PREF_KEY_LOG_SINGLE_DOSE, false);
+    LOG_BLE("Log single dose: Loaded %s from preferences\n", log_single_dose_ ? "true" : "false");
+}
+
+bool GrindController::save_log_single_dose(bool enabled) {
+    const auto control_lock = lock_control();
+    log_single_dose_ = enabled;
+    if (!preferences) {
+        LOG_BLE("ERROR: Cannot save log single dose (no preferences)\n");
+        return false;
+    }
+
+    size_t written = preferences->putBool(PREF_KEY_LOG_SINGLE_DOSE, enabled);
+    if (written != sizeof(bool)) {
+        LOG_BLE("ERROR: Failed to save log single dose to NVS\n");
+        return false;
+    }
+    LOG_BLE("Log single dose: Saved %s to preferences\n", enabled ? "true" : "false");
+    return true;
 }

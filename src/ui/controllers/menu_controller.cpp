@@ -76,6 +76,9 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::GRIND_FRESHNESS_HOURS_SLIDER_RELEASED, [this](lv_event_t*) { handle_grind_freshness_hours_slider_released(); });
     EventBridgeLVGL::register_handler(ET::COAST_RATIO_SLIDER, [this](lv_event_t*) { handle_coast_ratio_slider(); });
     EventBridgeLVGL::register_handler(ET::COAST_RATIO_SLIDER_RELEASED, [this](lv_event_t*) { handle_coast_ratio_slider_released(); });
+    EventBridgeLVGL::register_handler(ET::AUTO_COAST_CALIBRATION_TOGGLE, [this](lv_event_t*) { handle_auto_coast_calibration_toggle(); });
+    EventBridgeLVGL::register_handler(ET::COAST_CALIBRATION_RESET, [this](lv_event_t*) { handle_coast_calibration_reset(); });
+    EventBridgeLVGL::register_handler(ET::LOG_SINGLE_DOSE_TOGGLE, [this](lv_event_t*) { handle_log_single_dose_toggle(); });
     EventBridgeLVGL::register_handler(ET::MOTOR_LATENCY_SLIDER, [this](lv_event_t*) { handle_motor_latency_slider(); });
     EventBridgeLVGL::register_handler(ET::MOTOR_LATENCY_SLIDER_RELEASED, [this](lv_event_t*) { handle_motor_latency_slider_released(); });
     EventBridgeLVGL::register_handler(ET::SINGLE_DOSE_TIMEOUT_SLIDER, [this](lv_event_t*) { handle_single_dose_timeout_slider(); });
@@ -142,6 +145,11 @@ void MenuUIController::update() {
     float weight_delta_g = 0.0f;
     if (sensor && sensor->get_weight_delta(1000U, &weight_delta_g) &&
         display_weight_activity_detected(weight_delta_g, USER_WEIGHT_ACTIVITY_THRESHOLD_G)) {
+        last_activity_ms_ = now;
+    }
+
+    if (ui_manager_->grinding_controller_ &&
+        ui_manager_->grinding_controller_->is_demo_active()) {
         last_activity_ms_ = now;
     }
 
@@ -304,6 +312,7 @@ void MenuUIController::handle_autotune() {
 void MenuUIController::handle_back() {
     reset_idle_timer();
     if (!ui_manager_) return;
+    ui_manager_->menu_screen.reset_to_root();
     ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::READY);
 }
@@ -791,6 +800,47 @@ void MenuUIController::handle_coast_ratio_slider_released() {
     ui_manager_->menu_screen.update_coast_ratio_label(ratio);
 }
 
+void MenuUIController::handle_auto_coast_calibration_toggle() {
+    if (!ui_manager_) return;
+    auto* toggle = ui_manager_->menu_screen.get_auto_coast_calibration_toggle();
+    auto* controller = ui_manager_->get_grind_controller();
+    if (!toggle || !controller) return;
+    if (!controller->save_auto_coast_calibration(lv_obj_has_state(toggle, LV_STATE_CHECKED))) {
+        ui_manager_->menu_screen.update_grind_mode_toggles();
+    } else {
+        ui_manager_->menu_screen.set_coast_ratio_editable(!controller->get_auto_coast_calibration());
+        ui_manager_->menu_screen.set_log_single_dose_state(
+            controller->get_log_single_dose(),
+            controller->get_auto_coast_calibration()
+        );
+    }
+}
+
+void MenuUIController::handle_log_single_dose_toggle() {
+    if (!ui_manager_) return;
+    auto* toggle = ui_manager_->menu_screen.get_log_single_dose_toggle();
+    auto* controller = ui_manager_->get_grind_controller();
+    if (!toggle || !controller) return;
+
+    if (controller->get_auto_coast_calibration()) {
+        ui_manager_->menu_screen.set_log_single_dose_state(false, true);
+        return;
+    }
+
+    const bool is_checked = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    if (!controller->save_log_single_dose(is_checked)) {
+        LOG_BLE("Failed to save log single dose setting\n");
+    }
+    ui_manager_->menu_screen.set_log_single_dose_state(is_checked, false);
+}
+
+void MenuUIController::handle_coast_calibration_reset() {
+    if (!ui_manager_) return;
+    auto* controller = ui_manager_->get_grind_controller();
+    if (!controller || !controller->reset_coast_calibration()) return;
+    ui_manager_->menu_screen.update_grind_mode_toggles();
+}
+
 void MenuUIController::handle_motor_latency_slider() {
     if (!ui_manager_) return;
     auto* slider = ui_manager_->menu_screen.get_motor_latency_slider();
@@ -972,7 +1022,8 @@ void MenuUIController::handle_display_off_toggle() {
     if (!ScreensaverSettings::save_timing(settings.idle_timeout_s,
                                           settings.startup_timeout_s,
                                           enabled,
-                                          settings.display_off_delay_s)) {
+                                          settings.display_off_delay_s,
+                                          settings.wake_on_weight_threshold_g)) {
         ui_manager_->menu_screen.update_screensaver_toggles();
         return;
     }
@@ -1121,6 +1172,7 @@ void MenuUIController::reset_idle_timer() {
 void MenuUIController::auto_return_to_ready() {
     reset_idle_timer();
     if (!ui_manager_) return;
+    ui_manager_->menu_screen.reset_to_root();
 
     LOG_BLE("[MENU] Inactivity timeout reached (%ums); auto-returning to ready\n",
             USER_MENU_IDLE_TIMEOUT_MS);

@@ -78,7 +78,11 @@ struct GrindController {
     static constexpr const char* PREF_KEY_GRIND_FRESHNESS_HOURS = "freshness";
     bool save_motor_latency(float);
     bool save_coast_ratio(float);
+    bool save_auto_coast_calibration(bool value) { return preferences->putBool("auto_coast", value) == sizeof(bool); }
     bool save_single_dose_timeout(uint32_t) { return true; }
+    bool save_log_single_dose(bool value) { return preferences->putBool("log_sd", value) == sizeof(bool); }
+    bool get_log_single_dose() const { return false; }
+    bool get_effective_log_single_dose() const { return false; }
 };
 struct ProfileController {
     bool succeed = true;
@@ -96,10 +100,10 @@ struct HardwareManager {
 };
 namespace ScreensaverSettings {
 bool succeed = true;
-struct Timing { bool display_off_enabled; uint16_t display_off_delay_s; } stored{true, 7200};
+struct Timing { bool display_off_enabled; uint16_t display_off_delay_s; float wake_on_weight_threshold_g; } stored{true, 7200, 1.0f};
 Timing load_timing() { return stored; }
-bool save_timing(uint16_t, uint8_t, bool enabled, uint16_t delay) {
-    if (succeed) stored = {enabled, delay};
+bool save_timing(uint16_t, uint8_t, bool enabled, uint16_t delay, float wake_weight = 1.0f) {
+    if (succeed) stored = {enabled, delay, wake_weight};
     return succeed;
 }
 }
@@ -137,15 +141,16 @@ int main() {
     strcpy(update.screensaver_style, "gaggimate");
     assert(api.apply_settings(update));
     const int total_writes = Preferences::writes, total_opens = Preferences::opens;
-    assert(total_writes == 20 && total_opens == 10);
+    assert(total_writes == 22 && total_opens == 10);
     assert(control.motor_response_latency_ms == 100 && control.coast_ratio_ == 2);
     // Applying a legacy form preserves the current panel-off values while
     // still using the checked persistence path.
-    ScreensaverSettings::stored = {true, 7200};
+    ScreensaverSettings::stored = {true, 7200, 1.0f};
     update.has_display_off_enabled = update.has_display_off_delay_s = false;
     assert(api.apply_settings(update));
     assert(ScreensaverSettings::stored.display_off_enabled);
     assert(ScreensaverSettings::stored.display_off_delay_s == 7200);
+    assert(ScreensaverSettings::stored.wake_on_weight_threshold_g == 1.0f);
     update.has_display_off_enabled = update.has_display_off_delay_s = true;
     for (int failure = 1; failure <= total_writes; ++failure) {
         Preferences::reset(); Preferences::fail_write = failure;
@@ -154,9 +159,9 @@ int main() {
         assert(!api.apply_settings(update));
         assert(Preferences::writes == total_writes);
         if (failure == 4) assert(control.coast_ratio_ == 1);
-        if (failure == 5) assert(control.motor_response_latency_ms == 50);
-        if (failure == 14) assert(hw.display.brightness == 0.5f);
-        if (failure >= 17) assert(gaggimate_status_client.enabled);
+        if (failure == 6) assert(control.motor_response_latency_ms == 50);
+        if (failure == 16) assert(hw.display.brightness == 0.5f);
+        if (failure >= 19) assert(gaggimate_status_client.enabled);
     }
     for (int failure = 1; failure <= total_opens; ++failure) {
         Preferences::reset(); Preferences::fail_open = failure;

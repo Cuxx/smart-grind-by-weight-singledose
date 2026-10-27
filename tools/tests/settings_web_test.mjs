@@ -7,6 +7,19 @@ import vm from 'node:vm';
 const page = readFileSync(new URL('../../src/network/device_page.h', import.meta.url), 'utf8');
 const script = page.split('<script>')[1].split('</script>')[0];
 new vm.Script(script); // Syntax-check the complete embedded application.
+assert.match(script, /auto_coast_calibration:\$\('autoCoastCalibration'\)\.checked\?'1':'0'/);
+assert.match(script, /log_single_dose:\$\('logSingleDose'\)\.checked\?'1':'0'/);
+assert.match(script, /ratio\.disabled=automatic/);
+assert.match(script, /logSd\.disabled=true/);
+assert.match(script, /resetCoastCalibration/);
+assert.match(page, /min="0\.25" max="1\.5"/);
+assert.match(page, /id="logSingleDose"/);
+assert.match(page, /id="wakeOnWeight"/);
+assert.match(script, /wake_on_weight_threshold_g:\$\('wakeOnWeight'\)\.value/);
+assert.match(page, /data-page="stats"/);
+assert.match(page, /id="stats" class="page"/);
+assert.match(script, /loadStats/);
+assert.match(script, /\/api\/v1\/statistics/);
 const save = script.slice(script.indexOf('let settingsSavePending=false;'),
   script.indexOf("$('chooseScreensaver').onclick"));
 assert.ok(save.includes('waitForSettingsSave'));

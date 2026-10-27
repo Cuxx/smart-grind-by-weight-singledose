@@ -14,6 +14,7 @@ class SettingsCompatibilityTest(unittest.TestCase):
         required = handler.split("static const char* required[] = {", 1)[1].split("};", 1)[0]
         self.assertNotIn('"display_off_enabled"', required)
         self.assertNotIn('"display_off_delay_s"', required)
+        self.assertNotIn('"wake_on_weight_threshold_g"', required)
         block = handler.split("    const long screensaver_idle_timeout_s =", 1)[1]
         block = "const long screensaver_idle_timeout_s =" + block.split(
             "    const String screensaver_style", 1)[0]
@@ -27,6 +28,7 @@ class SettingsCompatibilityTest(unittest.TestCase):
 struct String {
  std::string value;
  long toInt() const {return std::stol(value);}
+ float toFloat() const {return std::stof(value);}
  bool operator==(const char* other) const{return value==other;}
 };
 bool form_bool(const String& v){return v=="1" || v=="true" || v=="on";}
@@ -36,10 +38,12 @@ struct Settings {
  bool display_off_enabled=false;
  uint16_t display_off_delay_s=3600;
  bool has_display_off_enabled=true,has_display_off_delay_s=true;
+ bool has_wake_on_weight=false;
+ float wake_on_weight_threshold_g=1.0f;
 };
-struct ScreensaverTimingSettings {bool display_off_enabled;uint16_t display_off_delay_s;};
+struct ScreensaverTimingSettings {bool display_off_enabled;uint16_t display_off_delay_s;float wake_on_weight_threshold_g;};
 namespace ScreensaverSettings {
- ScreensaverTimingSettings saved{true,7200};
+ ScreensaverTimingSettings saved{true,7200,1.0f};
  ScreensaverTimingSettings load_timing(){return saved;}
 }
 struct Request {
@@ -55,7 +59,7 @@ Settings parse(Request* request){
 }
 Settings apply(Settings settings){
 ''' + resolve + r'''
- ScreensaverSettings::saved={settings.display_off_enabled,settings.display_off_delay_s};
+ ScreensaverSettings::saved={settings.display_off_enabled,settings.display_off_delay_s,settings.wake_on_weight_threshold_g};
  return settings;
 }
 int main(){
@@ -76,7 +80,7 @@ int main(){
  assert(!settings.display_off_enabled && settings.display_off_delay_s==30);
  old.fields["display_off_enabled"]={"true"};
  settings=parse(&old);assert(settings.display_off_enabled);
- ScreensaverSettings::saved={false,3600};
+ ScreensaverSettings::saved={false,3600,1.0f};
  Request another_old;settings=apply(parse(&another_old));
  assert(!settings.display_off_enabled && settings.display_off_delay_s==3600);
  // Queue both before applying either: old form must preserve the newer save.

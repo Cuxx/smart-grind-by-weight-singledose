@@ -32,15 +32,17 @@ struct Preferences {
    return std::string(key)=="startup_s"?3:1;
  }
  uint16_t getUShort(const char* key,uint16_t fallback){return bad==key?fallback:120;}
- float getFloat(const char* key,float fallback){return bad==key?fallback:75;}
+ float getFloat(const char* key,float fallback){return bad==key?fallback:(std::string(key)=="wake_weight_g"?1.0f:75.0f);}
 };
-struct ScreensaverTimingSettings {uint16_t idle_timeout_s;uint8_t startup_timeout_s;bool display_off_enabled;uint16_t display_off_delay_s;};
+struct ScreensaverTimingSettings {uint16_t idle_timeout_s;uint8_t startup_timeout_s;bool display_off_enabled;uint16_t display_off_delay_s;float wake_on_weight_threshold_g;};
 namespace ScreensaverSettings {
-constexpr auto kPrefsNamespace="screensaver",kIdleTimeoutKey="idle_timeout_s",kStartupTimeoutKey="startup_s",kDisplayOffEnabledKey="panel_off",kDisplayOffDelayKey="panel_delay_s";
+constexpr auto kPrefsNamespace="screensaver",kIdleTimeoutKey="idle_timeout_s",kStartupTimeoutKey="startup_s",kDisplayOffEnabledKey="panel_off",kDisplayOffDelayKey="panel_delay_s",kWakeOnWeightKey="wake_weight_g";
+constexpr float kDefaultWakeOnWeightThresholdG = 1.0f;
 bool is_valid_idle_timeout(uint16_t v){return v>=30 && v<=3600;}
 bool is_valid_startup_timeout(uint8_t v){return v>=1 && v<=30;}
 bool is_valid_display_off_delay(uint16_t v){return v>=30 && v<=43200;}
-ScreensaverTimingSettings load_timing(){return {300,3,false,3600};}
+bool is_valid_wake_on_weight_threshold(float v){return std::isfinite(v) && v>=0.0f && v<=50.0f;}
+ScreensaverTimingSettings load_timing(){return {300,3,false,3600,1.0f};}
 ''' + method(timing, "bool load_timing_checked(") + r'''
 }
 struct DisplayManager {};
@@ -53,7 +55,7 @@ struct UIManager {
 ''' + method(ui, "bool UIManager::refresh_auto_action_settings(") + r'''
 struct ScreenTimeoutController {
  UIManager* ui_manager_;
- ScreensaverTimingSettings timing_settings_{300,3,false,3600};
+ ScreensaverTimingSettings timing_settings_{300,3,false,3600,1.0f};
  uint32_t settings_applied_at_ms_=0,last_weight_activity_ms_=0,last_settings_refresh_ms_=0;
  int restores=0;
  void restore_normal_display(DisplayManager*){++restores;}

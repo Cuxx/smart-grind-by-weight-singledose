@@ -53,6 +53,8 @@ Access **Menu → Grind Settings** to configure:
 - **Motor Latency** *(Advanced)*: View or manually adjust the minimum reliable
   motor pulse from 30–300 ms in 5 ms steps. Use **Menu → Tune Pulses** first;
   this manual control is a fallback when automatic tuning cannot complete.
+- **Coast Compensation** *(Advanced)*: The manual **Coast Ratio** range is 0.25–1.50 (default 1.00). Enable **Auto Coast** to learn the ratio from qualifying weight-mode grinds. While enabled, the ratio is display-only; use **Reset Coast Calibration** to restore 1.00 without disabling Auto Coast. Learning observes the settled main-stop coast before any correction pulse, ignores noisy, mechanically unstable, incomplete, timed out, overshoot, and pulse-corrected sessions, and applies a bounded 20% adjustment only to a later grind.
+- **Single Dose History Logging**: Single Dose sessions do not consume slots in the 30-session flash history by default. When **Auto Coast** is enabled, Single Dose history logging is locked off to prevent manual runs from evicting learned sessions. When Auto Coast is disabled, logging Single Dose sessions can be enabled manually.
 - **Purging** *(Advanced)*: Control how the grinder saturates itself before weight-mode grinding
   - **Prime mode**: Keeps all coffee and grinds continuously in a single smooth run directly to the target weight without intermediate motor stopping
   - **Purge mode** (default): Prompts you to discard stale grinds before continuing when coffee has aged past the freshness window
@@ -152,7 +154,9 @@ Main Screen (swipe left/right between tabs, up/down to toggle weight/time mode i
     |       |-- Purging (Prime/Purge radio buttons)
     |       |-- Amount slider (0.1g-5.0g for purge/prime operation)
     |       |-- Motor latency slider (30-300ms manual Pulse Tune fallback)
-    |       \-- Coast compensation slider
+    |       |-- Coast compensation slider (0.25-1.50)
+    |       |-- Auto Coast toggle (learns from valid weight grinds)
+    |       \-- Reset Coast Calibration button
     |
     \-- Info
         +-- Diagnostics

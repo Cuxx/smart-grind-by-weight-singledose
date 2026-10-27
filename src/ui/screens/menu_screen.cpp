@@ -71,10 +71,14 @@ void MenuScreen::create(BluetoothManager* bluetooth, GrindController* grind_ctrl
     grind_freshness_hours_label = nullptr;
     coast_ratio_slider = nullptr;
     coast_ratio_label = nullptr;
+    auto_coast_calibration_toggle = nullptr;
+    coast_calibration_reset_button = nullptr;
     motor_latency_slider = nullptr;
     motor_latency_label = nullptr;
     single_dose_timeout_slider = nullptr;
     single_dose_timeout_label = nullptr;
+    log_single_dose_toggle = nullptr;
+    single_dose_log_hint_label = nullptr;
     auto_start_threshold_slider = nullptr;
     auto_start_threshold_label = nullptr;
     display_off_toggle = nullptr;
@@ -246,8 +250,11 @@ void MenuScreen::create_menu_ui() {
         MenuScreen * self = static_cast<MenuScreen*>(lv_event_get_user_data(e));
         lv_obj_t * menu = static_cast<lv_obj_t *>(lv_event_get_target(e));
         lv_obj_t * cur = lv_menu_get_cur_main_page(menu);
-        if (cur == self->data_page || cur == self->stats_page) {
-            self->refresh_statistics();
+        if (cur == self->stats_page) {
+            // Lifetime stats live in RAM; refresh immediately with zero delay and no overlay.
+            self->refresh_lifetime_stats();
+        } else if (cur == self->data_page) {
+            self->refresh_log_data(true);
         }
 
         bool on_scale = (cur == self->scale_page);
@@ -778,6 +785,8 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
                       lv_color_hex(THEME_COLOR_ACCENT),
                       GRIND_SINGLE_DOSE_TIMEOUT_MIN_S,
                       GRIND_SINGLE_DOSE_TIMEOUT_MAX_S);
+    create_toggle_row(parent, "Log History", &log_single_dose_toggle);
+    single_dose_log_hint_label = create_description_label(parent, "Store single dose in history");
 
     // Grinder Purging section
     create_separator(parent, "Purging");
@@ -824,11 +833,15 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
     create_separator(parent, "Coast Compensation");
     create_description_label(parent, "How much coast the system expects after motor stop. Higher values reduce overshoot.");
 
-    // Slider for coast ratio (0.70 to 1.50 in 0.05 steps)
+    // Slider for coast ratio (0.25 to 1.50 in 0.05 steps)
     const uint32_t coast_slider_min = static_cast<uint32_t>(GRIND_LATENCY_TO_COAST_RATIO_MIN * kCoastRatioSliderScale + 0.5f);
     const uint32_t coast_slider_max = static_cast<uint32_t>(GRIND_LATENCY_TO_COAST_RATIO_MAX * kCoastRatioSliderScale + 0.5f);
     create_slider_row(parent, "Coast Ratio", &coast_ratio_label, &coast_ratio_slider,
                      lv_color_hex(THEME_COLOR_ACCENT), coast_slider_min, coast_slider_max);
+    create_toggle_row(parent, "Auto Coast", &auto_coast_calibration_toggle);
+    coast_calibration_reset_button = create_button(parent, "Reset Coast Calibration",
+                                                    lv_color_hex(THEME_COLOR_WARNING),
+                                                    260, 54, &lv_font_montserrat_16);
 
     // Register events for the toggles (done here because widgets are created lazily)
     using ET = EventBridgeLVGL::EventType;
@@ -867,6 +880,18 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::COAST_RATIO_SLIDER)));
         lv_obj_add_event_cb(coast_ratio_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_RELEASED,
                            reinterpret_cast<void*>(static_cast<intptr_t>(ET::COAST_RATIO_SLIDER_RELEASED)));
+    }
+    if (auto_coast_calibration_toggle) {
+        lv_obj_add_event_cb(auto_coast_calibration_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::AUTO_COAST_CALIBRATION_TOGGLE)));
+    }
+    if (log_single_dose_toggle) {
+        lv_obj_add_event_cb(log_single_dose_toggle, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::LOG_SINGLE_DOSE_TOGGLE)));
+    }
+    if (coast_calibration_reset_button) {
+        lv_obj_add_event_cb(coast_calibration_reset_button, EventBridgeLVGL::dispatch_event, LV_EVENT_CLICKED,
+                           reinterpret_cast<void*>(static_cast<intptr_t>(ET::COAST_CALIBRATION_RESET)));
     }
     if (motor_latency_slider) {
         lv_obj_add_event_cb(motor_latency_slider, EventBridgeLVGL::dispatch_event, LV_EVENT_VALUE_CHANGED,
@@ -1070,6 +1095,7 @@ void MenuScreen::show() {
 
 void MenuScreen::reset_to_root() {
     if (menu && main_page) {
+        lv_menu_clear_history(menu);
         lv_menu_set_page(menu, main_page);
     }
     scale_active = false;
@@ -1083,8 +1109,6 @@ void MenuScreen::hide() {
     }
 
     LOG_BLE("[%lums MENU] Hiding menu screen\n", millis());
-
-    reset_to_root();
 
     // Keep the menu in memory for instant access next time
     // Just hide the screen instead of deleting the menu
@@ -1253,87 +1277,93 @@ void MenuScreen::update_ble_status() {
     }
 }
 
-void MenuScreen::refresh_statistics(bool show_overlay) {
+void MenuScreen::refresh_lifetime_stats() {
     if (!visible) return;
 
-    // Define the statistics loading operation
-    auto load_statistics_operation = [this]() {
-        // Log data
+    // Lifetime statistics are kept in RAM in StatisticsManager; instant sub-microsecond access with no I/O.
+    set_label_text_int(stat_total_grinds_label, statistics_manager.get_total_grinds());
+
+    // Shot type breakdown (Single/Double/Custom)
+    char shot_text[32];
+    snprintf(shot_text, sizeof(shot_text), "%lu / %lu / %lu",
+             statistics_manager.get_single_shots(),
+             statistics_manager.get_double_shots(),
+             statistics_manager.get_custom_shots());
+    lv_label_set_text(stat_shots_label, shot_text);
+
+    // Motor runtime (convert seconds to hours:minutes)
+    uint64_t runtime_ms = statistics_manager.get_motor_runtime_ms();
+    uint32_t runtime_sec = static_cast<uint32_t>(runtime_ms / 1000ULL);
+    uint32_t hours = runtime_sec / 3600;
+    uint32_t minutes = (runtime_sec % 3600) / 60;
+    uint32_t seconds = runtime_sec % 60;
+    char runtime_text[32];
+    if (runtime_sec >= 3600) {
+        snprintf(runtime_text, sizeof(runtime_text), "%luh %lum", hours, minutes);
+    } else if (runtime_sec >= 60) {
+        snprintf(runtime_text, sizeof(runtime_text), "%lum %lus", minutes, seconds);
+    } else if (runtime_ms >= 1000) {
+        float seconds_float = static_cast<float>(runtime_ms) / 1000.0f;
+        snprintf(runtime_text, sizeof(runtime_text), "%.1fs", seconds_float);
+    } else {
+        snprintf(runtime_text, sizeof(runtime_text), "%llums", static_cast<unsigned long long>(runtime_ms));
+    }
+    lv_label_set_text(stat_motor_runtime_label, runtime_text);
+
+    // Device uptime
+    char uptime_text[32];
+    uint32_t uptime_hours = statistics_manager.get_device_uptime_hrs();
+    uint32_t uptime_minutes = statistics_manager.get_device_uptime_min_remainder();
+    snprintf(uptime_text, sizeof(uptime_text), "%luh %lum", uptime_hours, uptime_minutes);
+    lv_label_set_text(stat_device_uptime_label, uptime_text);
+
+    // Total weight
+    char weight_text[32];
+    snprintf(weight_text, sizeof(weight_text), "%.2f kg", statistics_manager.get_total_weight_kg());
+    lv_label_set_text(stat_total_weight_label, weight_text);
+
+    // Mode grinds (Weight/Time)
+    char mode_text[32];
+    snprintf(mode_text, sizeof(mode_text), "%lu / %lu",
+             statistics_manager.get_weight_mode_grinds(),
+             statistics_manager.get_time_mode_grinds());
+    lv_label_set_text(stat_mode_grinds_label, mode_text);
+
+    // Average accuracy
+    char accuracy_text[32];
+    snprintf(accuracy_text, sizeof(accuracy_text), "%.2fg", statistics_manager.get_avg_accuracy_g());
+    lv_label_set_text(stat_avg_accuracy_label, accuracy_text);
+
+    // Total pulses (also show average)
+    char pulses_text[32];
+    snprintf(pulses_text, sizeof(pulses_text), "%lu (avg: %.1f)",
+             statistics_manager.get_total_pulses(),
+             statistics_manager.get_avg_pulses());
+    lv_label_set_text(stat_total_pulses_label, pulses_text);
+}
+
+void MenuScreen::refresh_log_data(bool show_overlay) {
+    if (!visible) return;
+
+    auto load_logs_operation = [this]() {
+        // Log data - LittleFS file counts require scanning flash directory
         set_label_text_int(sessions_label, grind_logger.get_total_flash_sessions());
         set_label_text_int(events_label, grind_logger.count_total_events_in_flash());
         set_label_text_int(measurements_label, grind_logger.count_total_measurements_in_flash());
-
-        // Lifetime statistics
-        set_label_text_int(stat_total_grinds_label, statistics_manager.get_total_grinds());
-
-        // Shot type breakdown (Single/Double/Custom)
-        char shot_text[32];
-        snprintf(shot_text, sizeof(shot_text), "%lu / %lu / %lu",
-                 statistics_manager.get_single_shots(),
-                 statistics_manager.get_double_shots(),
-                 statistics_manager.get_custom_shots());
-        lv_label_set_text(stat_shots_label, shot_text);
-
-        // Motor runtime (convert seconds to hours:minutes)
-        uint64_t runtime_ms = statistics_manager.get_motor_runtime_ms();
-        uint32_t runtime_sec = static_cast<uint32_t>(runtime_ms / 1000ULL);
-        uint32_t hours = runtime_sec / 3600;
-        uint32_t minutes = (runtime_sec % 3600) / 60;
-        uint32_t seconds = runtime_sec % 60;
-        char runtime_text[32];
-        if (runtime_sec >= 3600) {
-            snprintf(runtime_text, sizeof(runtime_text), "%luh %lum", hours, minutes);
-        } else if (runtime_sec >= 60) {
-            snprintf(runtime_text, sizeof(runtime_text), "%lum %lus", minutes, seconds);
-        } else if (runtime_ms >= 1000) {
-            float seconds_float = static_cast<float>(runtime_ms) / 1000.0f;
-            snprintf(runtime_text, sizeof(runtime_text), "%.1fs", seconds_float);
-        } else {
-            snprintf(runtime_text, sizeof(runtime_text), "%llums", static_cast<unsigned long long>(runtime_ms));
-        }
-        lv_label_set_text(stat_motor_runtime_label, runtime_text);
-
-        // Device uptime
-        char uptime_text[32];
-        uint32_t uptime_hours = statistics_manager.get_device_uptime_hrs();
-        uint32_t uptime_minutes = statistics_manager.get_device_uptime_min_remainder();
-        snprintf(uptime_text, sizeof(uptime_text), "%luh %lum", uptime_hours, uptime_minutes);
-        lv_label_set_text(stat_device_uptime_label, uptime_text);
-
-        // Total weight
-        char weight_text[32];
-        snprintf(weight_text, sizeof(weight_text), "%.2f kg", statistics_manager.get_total_weight_kg());
-        lv_label_set_text(stat_total_weight_label, weight_text);
-
-        // Mode grinds (Weight/Time)
-        char mode_text[32];
-        snprintf(mode_text, sizeof(mode_text), "%lu / %lu",
-                 statistics_manager.get_weight_mode_grinds(),
-                 statistics_manager.get_time_mode_grinds());
-        lv_label_set_text(stat_mode_grinds_label, mode_text);
-
-        // Average accuracy
-        char accuracy_text[32];
-        snprintf(accuracy_text, sizeof(accuracy_text), "%.2fg", statistics_manager.get_avg_accuracy_g());
-        lv_label_set_text(stat_avg_accuracy_label, accuracy_text);
-
-        // Total pulses (also show average)
-        char pulses_text[32];
-        snprintf(pulses_text, sizeof(pulses_text), "%lu (avg: %.1f)",
-                 statistics_manager.get_total_pulses(),
-                 statistics_manager.get_avg_pulses());
-        lv_label_set_text(stat_total_pulses_label, pulses_text);
     };
 
-    // Used for when we reload the statistics after a data purge
-    if (!show_overlay){
-        load_statistics_operation();
+    if (!show_overlay) {
+        load_logs_operation();
         return;
     }
 
-    // Show blocking overlay while loading statistics
     auto& overlay = BlockingOperationOverlay::getInstance();
-    overlay.show_and_execute(BlockingOperation::LOADING_STATISTICS, load_statistics_operation);
+    overlay.show_and_execute(BlockingOperation::LOADING_STATISTICS, load_logs_operation);
+}
+
+void MenuScreen::refresh_statistics(bool show_overlay) {
+    refresh_lifetime_stats();
+    refresh_log_data(show_overlay);
 }
 
 void MenuScreen::update_brightness_sliders() {
@@ -1407,6 +1437,33 @@ void MenuScreen::update_coast_ratio_label(float ratio) {
         int percent = static_cast<int>(ratio * 100.0f + 0.5f);
         snprintf(buffer, sizeof(buffer), "Coast Ratio: %d%%", percent);
         lv_label_set_text(coast_ratio_label, buffer);
+    }
+}
+
+void MenuScreen::set_coast_ratio_editable(bool editable) {
+    if (!coast_ratio_slider) return;
+    if (editable) lv_obj_clear_state(coast_ratio_slider, LV_STATE_DISABLED);
+    else lv_obj_add_state(coast_ratio_slider, LV_STATE_DISABLED);
+}
+
+void MenuScreen::set_log_single_dose_state(bool enabled, bool auto_coast_active) {
+    if (!log_single_dose_toggle) return;
+    if (auto_coast_active) {
+        lv_obj_clear_state(log_single_dose_toggle, LV_STATE_CHECKED);
+        lv_obj_add_state(log_single_dose_toggle, LV_STATE_DISABLED);
+        if (single_dose_log_hint_label) {
+            lv_label_set_text(single_dose_log_hint_label, "Disabled (Auto Coast active)");
+        }
+    } else {
+        lv_obj_clear_state(log_single_dose_toggle, LV_STATE_DISABLED);
+        if (enabled) {
+            lv_obj_add_state(log_single_dose_toggle, LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(log_single_dose_toggle, LV_STATE_CHECKED);
+        }
+        if (single_dose_log_hint_label) {
+            lv_label_set_text(single_dose_log_hint_label, "Store single dose in history");
+        }
     }
 }
 
@@ -1861,6 +1918,12 @@ void MenuScreen::update_grind_mode_toggles() {
     }
 
     update_coast_ratio_label(coast_ratio);
+    const bool auto_coast = grind_controller && grind_controller->get_auto_coast_calibration();
+    if (auto_coast_calibration_toggle) {
+        if (auto_coast) lv_obj_add_state(auto_coast_calibration_toggle, LV_STATE_CHECKED);
+        else lv_obj_clear_state(auto_coast_calibration_toggle, LV_STATE_CHECKED);
+    }
+    set_coast_ratio_editable(!auto_coast);
 
     float motor_latency_ms = GRIND_MOTOR_RESPONSE_LATENCY_DEFAULT_MS;
     if (grind_controller) {
@@ -1882,6 +1945,8 @@ void MenuScreen::update_grind_mode_toggles() {
         lv_slider_set_value(single_dose_timeout_slider, clamped_sd, LV_ANIM_OFF);
     }
     update_single_dose_timeout_display(single_dose_timeout_s);
+    const bool log_sd = grind_controller && grind_controller->get_log_single_dose();
+    set_log_single_dose_state(log_sd, auto_coast);
     update_grind_tab_toggles();
 }
 

@@ -92,7 +92,7 @@ void GrindingScreenDisc::create() {
     // Weight label centered over the disc
     weight_label = lv_label_create(screen);
     lv_label_set_text(weight_label, "0.0g");
-    lv_obj_set_style_text_font(weight_label, &lv_font_montserrat_56, 0);
+    lv_obj_set_style_text_font(weight_label, &lv_font_montserrat_bold_60, 0);
     lv_obj_set_style_text_color(weight_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(weight_label, LV_ALIGN_CENTER, 0, DISC_CENTER_Y_OFFSET);
 

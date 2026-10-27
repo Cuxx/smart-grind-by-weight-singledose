@@ -34,6 +34,8 @@ struct FlashOpRequest {
     float start_weight;      // For START_GRIND_SESSION (pre-tare snapshot)
     float final_weight;      // For END_GRIND_SESSION
     uint8_t pulse_count;     // For END_GRIND_SESSION
+    bool auto_coast_calibrated; // Coast learning was accepted for this session
+    bool save_to_flash = true; // Whether session should be persisted to flash
     uint32_t completed_at_ms; // Absolute clock at terminal phase entry, not save time
     uint32_t motor_runtime_ms; // For UPDATE_MANUAL_RUNTIME
 };
@@ -173,8 +175,19 @@ private:
     // Motor response latency - runtime configurable
     float motor_response_latency_ms;
 
-    // Coast ratio - runtime configurable
-    float coast_ratio_;
+    // Coast ratio - runtime configurable. Snapshot at session start so any
+    // calibration result only affects a later grind.
+    float coast_ratio_ = GRIND_LATENCY_TO_COAST_RATIO_DEFAULT;
+    float coast_ratio_for_session_ = GRIND_LATENCY_TO_COAST_RATIO_DEFAULT;
+    bool auto_coast_calibration_ = false;
+    bool predictive_stop_recorded_;
+    bool main_stop_settled_;
+    float predictive_stop_weight_;
+    float predictive_stop_latency_ms_;
+    float predictive_stop_flow_rate_;
+    float main_stop_settled_weight_;
+    bool auto_coast_calibrated_for_session_ = false;
+    bool log_single_dose_ = false;
 
     // Grind freshness tracking
     bool grinder_purged_since_boot;      // Tracks if grinder has been used since boot (RAM only)
@@ -245,8 +258,11 @@ public:
     static_assert(sizeof("purge_amount_g") - 1 <= 15, "NVS preference key is too long");
     static constexpr const char* PREF_KEY_GRIND_FRESHNESS_HOURS = "freshness_hrs";
     static constexpr const char* PREF_KEY_COAST_RATIO = "coast_ratio";
+    static constexpr const char* PREF_KEY_AUTO_COAST_CALIBRATION = "auto_coast";
     static constexpr const char* PREF_KEY_LAST_GRIND_RUNTIME = "last_grind_ms";
     static constexpr const char* PREF_KEY_SINGLE_DOSE_TIMEOUT_S = "sd_timeout_s";
+    static constexpr const char* PREF_KEY_LOG_SINGLE_DOSE = "log_sd";
+    static_assert(sizeof("log_sd") - 1 <= 15, "NVS preference key is too long");
     GrindMode get_mode() const { const auto control_lock = lock_control(); return mode; }
     GrindSessionDescriptor get_session_descriptor() const { const auto control_lock = lock_control(); return session_descriptor; }
     
@@ -276,15 +292,25 @@ public:
 
     // Coast ratio accessors
     float get_coast_ratio() const { const auto control_lock = lock_control(); return coast_ratio_; }
+    float get_coast_ratio_for_session() const { const auto control_lock = lock_control(); return coast_ratio_for_session_; }
+    bool get_auto_coast_calibration() const { const auto control_lock = lock_control(); return auto_coast_calibration_; }
     void set_coast_ratio(float value);
     void load_coast_ratio();
     bool save_coast_ratio(float value);
+    bool save_auto_coast_calibration(bool enabled);
+    bool reset_coast_calibration();
 
     // Single Dose safety timeout accessors
     uint32_t get_single_dose_timeout_s() const { const auto control_lock = lock_control(); return single_dose_timeout_s_; }
     void set_single_dose_timeout_s(uint32_t seconds);
     void load_single_dose_timeout();
     bool save_single_dose_timeout(uint32_t seconds);
+
+    // Single Dose history logging accessors
+    bool get_log_single_dose() const { const auto control_lock = lock_control(); return log_single_dose_; }
+    bool get_effective_log_single_dose() const { const auto control_lock = lock_control(); return auto_coast_calibration_ ? false : log_single_dose_; }
+    void load_log_single_dose();
+    bool save_log_single_dose(bool enabled);
 
     // Grind freshness accessors
     bool get_grinder_purged_since_boot() const { const auto control_lock = lock_control(); return grinder_purged_since_boot; }
@@ -298,6 +324,9 @@ private:
     void switch_phase(GrindPhase new_phase, const GrindLoopData& loop_data = {});
     void final_measurement(const GrindLoopData& loop_data);
     void monitor_mechanical_instability(const GrindLoopData& loop_data);
+    void record_predictive_stop(float weight, float latency_ms, float flow_rate);
+    void record_main_stop_settled_weight(float weight);
+    void apply_auto_coast_calibration();
 
     bool should_purge() const;
     bool check_timeout() const;

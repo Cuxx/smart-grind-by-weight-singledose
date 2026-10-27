@@ -26,8 +26,10 @@ struct DeviceSettingsUpdate {
     float purge_amount_g = 1.0f;
     float freshness_hours = 8.0f;
     float coast_ratio = 1.0f;
+    bool auto_coast_calibration = false;
     float motor_latency_ms = 50.0f;
     bool logging_enabled = false;
+    bool log_single_dose = false;
     bool swipe_enabled = false;
     int brightness_percent = 100;
     int screensaver_brightness_percent = 35;
@@ -39,6 +41,8 @@ struct DeviceSettingsUpdate {
     uint16_t display_off_delay_s = 3600;
     bool has_display_off_enabled = true;
     bool has_display_off_delay_s = true;
+    bool has_wake_on_weight = false;
+    float wake_on_weight_threshold_g = 1.0f;
     char screensaver_style[16] = "minimal";
     char clock_position[8] = "center";
     char clock_layout[16] = "horizontal";

@@ -147,7 +147,8 @@ void GrindLogger::start_grind_session(const GrindSessionDescriptor& descriptor, 
 
 
 void GrindLogger::end_grind_session(const char* final_result, float final_weight, uint8_t pulse_count,
-                                   uint32_t completed_at_ms) {
+                                   uint32_t completed_at_ms, bool auto_coast_calibrated,
+                                   bool save_to_flash) {
     if (!current_session || !logging_active) {
         return;
     }
@@ -156,6 +157,9 @@ void GrindLogger::end_grind_session(const char* final_result, float final_weight
     current_session->error_grams = current_session->target_weight - final_weight;
     current_session->total_time_ms = completed_at_ms - session_start_time;
     current_session->pulse_count = pulse_count;
+    if (auto_coast_calibrated) {
+        current_session->reserved[0] |= GRIND_SESSION_FLAG_AUTO_COAST_CALIBRATED;
+    }
     strncpy(current_session->result_status, final_result, sizeof(current_session->result_status) - 1);
 
     // Finalize motor time tracking - if motor is still on, count the final period
@@ -216,7 +220,7 @@ void GrindLogger::end_grind_session(const char* final_result, float final_weight
     const char* mode_name = (mode == GrindMode::TIME) ? "TIME" :
                             (mode == GrindMode::MANUAL ? "SINGLE_DOSE" : "WEIGHT");
 
-    if (!is_cancelled && logging_enabled) {
+    if (!is_cancelled && logging_enabled && save_to_flash) {
         const bool saved = flush_session_to_flash();
         if (mode == GrindMode::TIME) {
             LOG_BLE("Ended session %lu: mode=%s, final=%.1fg, time_error=%+ldms, %s (%s)\n",
@@ -233,21 +237,22 @@ void GrindLogger::end_grind_session(const char* final_result, float final_weight
                     current_session->error_grams,
                     final_result, saved ? "saved" : "not saved - storage failure");
         }
-    } else if (!is_cancelled && !logging_enabled) {
+    } else if (!is_cancelled && (!logging_enabled || !save_to_flash)) {
+        const char* skip_reason = !logging_enabled ? "logging disabled" : "single dose skipped";
         if (mode == GrindMode::TIME) {
-            LOG_BLE("Ended session %lu: mode=%s, final=%.1fg, time_error=%+ldms, %s (not saved - logging disabled)\n",
+            LOG_BLE("Ended session %lu: mode=%s, final=%.1fg, time_error=%+ldms, %s (not saved - %s)\n",
                     current_session->session_id,
                     mode_name,
                     final_weight,
                     static_cast<long>(current_session->time_error_ms),
-                    final_result);
+                    final_result, skip_reason);
         } else {
-            LOG_BLE("Ended session %lu: mode=%s, final=%.1fg, error=%+.2fg, %s (not saved - logging disabled)\n",
+            LOG_BLE("Ended session %lu: mode=%s, final=%.1fg, error=%+.2fg, %s (not saved - %s)\n",
                     current_session->session_id,
                     mode_name,
                     final_weight,
                     current_session->error_grams,
-                    final_result);
+                    final_result, skip_reason);
         }
     } else {
         if (mode == GrindMode::TIME) {

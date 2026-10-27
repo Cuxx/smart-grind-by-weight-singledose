@@ -21,6 +21,7 @@
 #include "../hardware/hardware_manager.h"
 #include "../logging/grind_logging.h"
 #include "../logging/diagnostic_log.h"
+#include "../system/statistics_manager.h"
 #include "network_manager.h"
 #include "device_api.h"
 #include "ota_stream.h"
@@ -495,6 +496,47 @@ void DeviceWebServer::configure_routes() {
         request->send(response);
     });
 
+    server_.on(AsyncURIMatcher::exact("/api/v1/statistics"), HTTP_GET, [this](AsyncWebServerRequest* request) {
+        if ((grind_controller_ && grind_controller_->is_active()) || ota_active_.load()) {
+            AsyncWebServerResponse* response = request->beginResponse(
+                503, "application/json", "{\"error\":\"Grind in progress\"}");
+            response->addHeader("Cache-Control", "no-store");
+            request->send(response);
+            return;
+        }
+
+        AsyncResponseStream* response = request->beginResponseStream("application/json");
+        response->printf(
+            "{\"api\":\"v1\","
+            "\"total_grinds\":%lu,"
+            "\"total_weight_kg\":%.2f,"
+            "\"motor_runtime_sec\":%lu,"
+            "\"motor_runtime_ms\":%llu,"
+            "\"device_uptime_hrs\":%lu,"
+            "\"device_uptime_min\":%lu,"
+            "\"shots\":{\"single\":%lu,\"double\":%lu,\"custom\":%lu},"
+            "\"modes\":{\"weight\":%lu,\"time\":%lu},"
+            "\"pulses\":{\"total\":%lu,\"time\":%lu,\"avg\":%.2f},"
+            "\"avg_accuracy_g\":%.2f}",
+            static_cast<unsigned long>(statistics_manager.get_total_grinds()),
+            statistics_manager.get_total_weight_kg(),
+            static_cast<unsigned long>(statistics_manager.get_motor_runtime_sec()),
+            static_cast<unsigned long long>(statistics_manager.get_motor_runtime_ms()),
+            static_cast<unsigned long>(statistics_manager.get_device_uptime_hrs()),
+            static_cast<unsigned long>(statistics_manager.get_device_uptime_min_remainder()),
+            static_cast<unsigned long>(statistics_manager.get_single_shots()),
+            static_cast<unsigned long>(statistics_manager.get_double_shots()),
+            static_cast<unsigned long>(statistics_manager.get_custom_shots()),
+            static_cast<unsigned long>(statistics_manager.get_weight_mode_grinds()),
+            static_cast<unsigned long>(statistics_manager.get_time_mode_grinds()),
+            static_cast<unsigned long>(statistics_manager.get_total_pulses()),
+            static_cast<unsigned long>(statistics_manager.get_time_pulses()),
+            statistics_manager.get_avg_pulses(),
+            statistics_manager.get_avg_accuracy_g());
+        response->addHeader("Cache-Control", "no-store");
+        request->send(response);
+    });
+
     server_.on(AsyncURIMatcher::exact("/api/v1/history"), HTTP_GET, [this](AsyncWebServerRequest* request) {
         if (history_is_busy(grind_controller_) || ota_active_.load() ||
             (bluetooth_manager_ && bluetooth_manager_->is_transfer_active())) {
@@ -551,7 +593,7 @@ void DeviceWebServer::configure_routes() {
                 "\"target_weight\":%.2f,\"target_time_ms\":%lu,\"final_weight\":%.2f,"
                 "\"error_grams\":%.2f,\"time_error_ms\":%ld,\"duration_ms\":%lu,"
                 "\"motor_time_ms\":%lu,\"pulses\":%u,\"result\":\"%s\","
-                "\"events\":%u,\"measurements\":%u,\"schema\":%u}",
+                "\"events\":%u,\"measurements\":%u,\"schema\":%u,\"auto_coast_calibrated\":%s}",
                 static_cast<unsigned long>(id), static_cast<unsigned long>(session.session_timestamp),
                 session.profile_id, session.grind_mode == 1 ? "time" : (session.grind_mode == 2 ? "singledose" : "weight"),
                 session.target_weight, static_cast<unsigned long>(session.target_time_ms),
@@ -559,7 +601,8 @@ void DeviceWebServer::configure_routes() {
                 static_cast<unsigned long>(session.total_time_ms),
                 static_cast<unsigned long>(session.total_motor_on_time_ms), session.pulse_count,
                 json_escape(String(result)).c_str(), header.event_count, header.measurement_count,
-                header.schema_version);
+                header.schema_version,
+                (session.reserved[0] & GRIND_SESSION_FLAG_AUTO_COAST_CALIBRATED) ? "true" : "false");
         }
         response->print("]}");
         response->addHeader("Cache-Control", "no-store");
