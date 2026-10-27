@@ -148,6 +148,11 @@ void MenuUIController::update() {
         last_activity_ms_ = now;
     }
 
+    if (ui_manager_->grinding_controller_ &&
+        ui_manager_->grinding_controller_->is_demo_active()) {
+        last_activity_ms_ = now;
+    }
+
     if (now - last_activity_ms_ >= USER_MENU_IDLE_TIMEOUT_MS) {
         auto_return_to_ready();
         return;
@@ -307,6 +312,7 @@ void MenuUIController::handle_autotune() {
 void MenuUIController::handle_back() {
     reset_idle_timer();
     if (!ui_manager_) return;
+    ui_manager_->menu_screen.reset_to_root();
     ui_manager_->set_current_tab(ui_manager_->ready_screen.menu_tab_index());
     ui_manager_->switch_to_state(UIState::READY);
 }
@@ -1166,6 +1172,7 @@ void MenuUIController::reset_idle_timer() {
 void MenuUIController::auto_return_to_ready() {
     reset_idle_timer();
     if (!ui_manager_) return;
+    ui_manager_->menu_screen.reset_to_root();
 
     LOG_BLE("[MENU] Inactivity timeout reached (%ums); auto-returning to ready\n",
             USER_MENU_IDLE_TIMEOUT_MS);

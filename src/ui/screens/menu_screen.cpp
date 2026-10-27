@@ -1095,6 +1095,7 @@ void MenuScreen::show() {
 
 void MenuScreen::reset_to_root() {
     if (menu && main_page) {
+        lv_menu_clear_history(menu);
         lv_menu_set_page(menu, main_page);
     }
     scale_active = false;
@@ -1108,8 +1109,6 @@ void MenuScreen::hide() {
     }
 
     LOG_BLE("[%lums MENU] Hiding menu screen\n", millis());
-
-    reset_to_root();
 
     // Keep the menu in memory for instant access next time
     // Just hide the screen instead of deleting the menu

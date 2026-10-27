@@ -271,6 +271,10 @@ void UIManager::switch_to_state(UIState new_state) {
         menu_controller_->reset_idle_timer();
     }
 
+    if (new_state == UIState::READY) {
+        menu_screen.reset_to_root();
+    }
+
     // Hide all screens before showing the requested one
     ready_screen.hide();
     edit_screen.hide();
