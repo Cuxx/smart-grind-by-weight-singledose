@@ -273,6 +273,9 @@ void UIManager::switch_to_state(UIState new_state) {
 
     if (new_state == UIState::READY) {
         menu_screen.reset_to_root();
+        if (screen_timeout_controller_) {
+            screen_timeout_controller_->reset_idle_timer();
+        }
     }
 
     // Hide all screens before showing the requested one

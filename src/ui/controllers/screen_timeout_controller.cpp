@@ -15,10 +15,17 @@ ScreenTimeoutController::ScreenTimeoutController(UIManager* manager)
     , timing_settings_(ScreensaverSettings::load_timing())
     , settings_applied_at_ms_(millis())
     , last_weight_activity_ms_(settings_applied_at_ms_)
+    , idle_reset_at_ms_(settings_applied_at_ms_)
     , screen_dimmed_(false)
     , panel_off_(false) {}
 
 void ScreenTimeoutController::register_events() {}
+
+void ScreenTimeoutController::reset_idle_timer() {
+    uint32_t now = millis();
+    idle_reset_at_ms_ = now;
+    last_weight_activity_ms_ = now;
+}
 
 void ScreenTimeoutController::update() {
     if (!ui_manager_) {
@@ -37,6 +44,9 @@ void ScreenTimeoutController::update() {
 
     if (is_protected_state()) {
         restore_normal_display(display);
+        uint32_t now = millis();
+        idle_reset_at_ms_ = now;
+        last_weight_activity_ms_ = now;
         return;
     }
 
@@ -54,6 +64,7 @@ void ScreenTimeoutController::update() {
     uint32_t display_off_timeout_ms =
         ScreensaverSettings::display_off_timeout_ms(timing_settings_);
     const uint32_t ms_since_settings_applied = now - settings_applied_at_ms_;
+    const uint32_t ms_since_idle_reset = now - idle_reset_at_ms_;
     float weight_delta_g = 0.0f;
     if (sensor && sensor->get_weight_delta(1000U, &weight_delta_g) &&
         display_weight_activity_detected(weight_delta_g, timing_settings_.wake_on_weight_threshold_g)) {
@@ -80,7 +91,7 @@ void ScreenTimeoutController::update() {
     }
 
     const uint32_t inactive_ms = min(min(ms_since_touch, ms_since_weight),
-                                     ms_since_settings_applied);
+                                     min(ms_since_settings_applied, ms_since_idle_reset));
     const DisplayIdleState idle_state = display_idle_state(
         inactive_ms,
         idle_timeout_ms,
@@ -88,15 +99,6 @@ void ScreenTimeoutController::update() {
         static_cast<uint32_t>(timing_settings_.display_off_delay_s) * 1000U);
     const bool should_dim = idle_state != DisplayIdleState::ACTIVE;
     const bool should_turn_off = idle_state == DisplayIdleState::PANEL_OFF;
-
-    if (should_dim && !screen_dimmed_) {
-        if (ui_manager_->state_machine &&
-            ui_manager_->state_machine->get_current_state() == UIState::MENU) {
-            if (ui_manager_->menu_controller_) {
-                ui_manager_->menu_controller_->auto_return_to_ready();
-            }
-        }
-    }
 
     if (should_turn_off && !panel_off_) {
         if (!screen_dimmed_) {
@@ -150,6 +152,7 @@ bool ScreenTimeoutController::apply_runtime_settings(bool verify_storage) {
     settings_applied_at_ms_ = millis();
     last_weight_activity_ms_ = settings_applied_at_ms_;
     last_settings_refresh_ms_ = settings_applied_at_ms_;
+    idle_reset_at_ms_ = settings_applied_at_ms_;
     LOG_BLE("[DISPLAY] Runtime settings applied; screensaver=%lus panel-off=%s delay=%lus wake-weight=%.1fg\n",
             static_cast<unsigned long>(timing_settings_.idle_timeout_s),
             timing_settings_.display_off_enabled ? "ON" : "OFF",
@@ -238,12 +241,32 @@ bool ScreenTimeoutController::is_protected_state() const {
         return true;
     }
 
+    if (ui_manager_->hardware_manager) {
+        auto* grinder = ui_manager_->hardware_manager->get_grinder();
+        if (grinder && grinder->is_grinding()) {
+            return true;
+        }
+    }
+
+    if (ui_manager_->grind_controller) {
+        if (ui_manager_->grind_controller->is_active() ||
+            ui_manager_->grind_controller->is_grind_paused()) {
+            return true;
+        }
+    }
+
     if (!ui_manager_->state_machine) {
         return false;
     }
 
     UIState state = ui_manager_->state_machine->get_current_state();
     return state == UIState::GRINDING ||
+           state == UIState::GRIND_COMPLETE ||
+           state == UIState::GRIND_TIMEOUT ||
+           state == UIState::PURGE_CONFIRM ||
+           state == UIState::MENU ||
+           state == UIState::CALIBRATION ||
+           state == UIState::AUTOTUNING ||
            state == UIState::OTA_UPDATE ||
            state == UIState::OTA_UPDATE_FAILED;
 }

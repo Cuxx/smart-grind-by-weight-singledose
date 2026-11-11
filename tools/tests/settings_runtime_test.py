@@ -56,7 +56,7 @@ struct UIManager {
 struct ScreenTimeoutController {
  UIManager* ui_manager_;
  ScreensaverTimingSettings timing_settings_{300,3,false,3600,1.0f};
- uint32_t settings_applied_at_ms_=0,last_weight_activity_ms_=0,last_settings_refresh_ms_=0;
+ uint32_t settings_applied_at_ms_=0,last_weight_activity_ms_=0,last_settings_refresh_ms_=0,idle_reset_at_ms_=0;
  int restores=0;
  void restore_normal_display(DisplayManager*){++restores;}
  bool apply_runtime_settings(bool);

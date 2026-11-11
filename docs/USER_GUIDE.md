@@ -270,6 +270,7 @@ grinder.
   the panel, then use the next touch normally.
 - **Startup behavior**: On normal Ready boots, the image is drawn early while the full UI initializes, then the regular timed screensaver overlay takes over.
 - **OTA behavior**: During BLE OTA updates and OTA failure warnings, the screensaver is disabled so progress and recovery prompts stay visible.
+- **Grinding & menu behavior**: The screensaver is suppressed while grinding (active or paused), while viewing grind completion and timeout summaries, and while navigating the on-device menu. Leaving the menu or completing a grind resets the idle timer so the screensaver only activates after the full configured timeout on the Ready screen.
 
 ---
 

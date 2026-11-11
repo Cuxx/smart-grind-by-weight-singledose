@@ -27,6 +27,7 @@ public:
 
     void trigger_preview();
     bool is_preview_active() const { return preview_active_; }
+    void reset_idle_timer();
 
 private:
     void refresh_settings_if_needed(uint32_t now_ms);
@@ -39,6 +40,7 @@ private:
     uint32_t last_settings_refresh_ms_ = 0;
     uint32_t settings_applied_at_ms_ = 0;
     uint32_t last_weight_activity_ms_ = 0;
+    uint32_t idle_reset_at_ms_ = 0;
     uint32_t preview_started_at_ms_ = 0;
     bool screen_dimmed_;
     bool panel_off_;
