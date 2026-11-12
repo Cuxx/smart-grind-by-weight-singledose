@@ -128,9 +128,7 @@ void TouchDriver::update() {
     } else if (event_flag == 0x01) {
         // Explicit lift-up from controller
         dropout_count = 0;
-        if (was_pressed) {
-            last_touch_time = millis();
-        }
+        last_touch_time = millis();
         press_event_pending = false;
         last_touch.pressed = false;
         last_touch.just_pressed = false;
