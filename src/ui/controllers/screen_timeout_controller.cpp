@@ -68,6 +68,11 @@ void ScreenTimeoutController::update() {
     float weight_delta_g = 0.0f;
     if (sensor && sensor->get_weight_delta(1000U, &weight_delta_g) &&
         display_weight_activity_detected(weight_delta_g, timing_settings_.wake_on_weight_threshold_g)) {
+        if (screen_dimmed_ || panel_off_) {
+            LOG_BLE("[DISPLAY] Weight wake activity: delta=%.2fg (threshold=%.1fg)\n",
+                    static_cast<double>(weight_delta_g),
+                    static_cast<double>(timing_settings_.wake_on_weight_threshold_g));
+        }
         last_weight_activity_ms_ = now;
     }
 
@@ -84,6 +89,7 @@ void ScreenTimeoutController::update() {
                                  (now - last_weight_activity_ms_ < (now - preview_started_at_ms_));
         if (touch_woke || weight_woke) {
             preview_active_ = false;
+            LOG_BLE("[DISPLAY] Preview dismissed by %s\n", touch_woke ? "touch" : "weight");
             restore_normal_display(display);
             return;
         }
@@ -137,6 +143,15 @@ void ScreenTimeoutController::update() {
                 static_cast<unsigned long>(timing_settings_.idle_timeout_s),
                 screensaver_controller_ && screensaver_controller_->is_visible() ? "ON" : "OFF");
     } else if (!should_dim && (screen_dimmed_ || panel_off_)) {
+        const bool touch_wake = (ms_since_touch < idle_timeout_ms);
+        const bool weight_wake = (ms_since_weight < idle_timeout_ms);
+        LOG_BLE("[DISPLAY] Wake from %s (source: %s%s%s, delta=%.2fg, inactive=%lums)\n",
+                panel_off_ ? "panel-off" : "screensaver",
+                touch_wake ? "touch" : "",
+                (touch_wake && weight_wake) ? "+" : "",
+                weight_wake ? "weight" : (!touch_wake ? "timer/other" : ""),
+                static_cast<double>(weight_delta_g),
+                static_cast<unsigned long>(inactive_ms));
         restore_normal_display(display);
     }
 }

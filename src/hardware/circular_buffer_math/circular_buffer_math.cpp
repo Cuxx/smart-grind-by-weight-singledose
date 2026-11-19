@@ -245,7 +245,39 @@ bool CircularBufferMath::get_window_delta(uint32_t window_ms, int32_t* delta_out
         return false;
     }
 
-    *delta_out = newest_raw - oldest_raw;
+    int32_t filtered_newest = newest_raw;
+    int32_t filtered_oldest = oldest_raw;
+
+    // Reject single-sample ADC spikes at window boundaries using median-of-3
+    if (collected >= 6) {
+        auto median3 = [](int32_t a, int32_t b, int32_t c) -> int32_t {
+            if (a > b) {
+                if (b > c) return b;
+                return (a > c) ? c : a;
+            } else {
+                if (a > c) return a;
+                return (b > c) ? c : b;
+            }
+        };
+
+        const uint16_t idx0 = (write_index - 1 + MAX_BUFFER_SIZE) % MAX_BUFFER_SIZE;
+        const uint16_t idx1 = (write_index - 2 + MAX_BUFFER_SIZE) % MAX_BUFFER_SIZE;
+        const uint16_t idx2 = (write_index - 3 + MAX_BUFFER_SIZE) % MAX_BUFFER_SIZE;
+
+        const uint16_t idx_old0 = (write_index - 1 - (collected - 1) + MAX_BUFFER_SIZE) % MAX_BUFFER_SIZE;
+        const uint16_t idx_old1 = (write_index - 1 - (collected - 2) + MAX_BUFFER_SIZE) % MAX_BUFFER_SIZE;
+        const uint16_t idx_old2 = (write_index - 1 - (collected - 3) + MAX_BUFFER_SIZE) % MAX_BUFFER_SIZE;
+
+        filtered_newest = median3(circular_buffer[idx0].raw_value,
+                                  circular_buffer[idx1].raw_value,
+                                  circular_buffer[idx2].raw_value);
+
+        filtered_oldest = median3(circular_buffer[idx_old0].raw_value,
+                                  circular_buffer[idx_old1].raw_value,
+                                  circular_buffer[idx_old2].raw_value);
+    }
+
+    *delta_out = filtered_newest - filtered_oldest;
 
     if (span_ms_out) {
         if (newest_ts >= oldest_ts) {
