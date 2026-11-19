@@ -108,33 +108,34 @@ void TouchDriver::update() {
     }
     
     uint8_t touches = buf[0] & 0x0F;
+    if (touches > 2) {
+        // FT3168 supports max 2 touch points. Anything higher indicates bus float/noise.
+        touches = 0;
+    }
     uint8_t event_flag = (buf[1] >> 6) & 0x03; // 0x00: Down, 0x01: Up, 0x02: Contact, 0x03: No Event
 
-    if (touches > 0 && event_flag != 0x01) {
+    if (touches > 0) {
         dropout_count = 0;
         last_touch.x = ((buf[1] & 0x0F) << 8) | buf[2];
         last_touch.y = ((buf[3] & 0x0F) << 8) | buf[4];
-        last_touch.pressed = true;
-        if (!was_pressed) {
-            press_event_pending = true;
-        }
-        last_touch.just_pressed = press_event_pending;
 
-        // A held or stale controller contact is not new user activity. Only a
-        // fresh press resets the display idle timer.
-        if (!was_pressed) {
+        if (event_flag != 0x01) {
+            last_touch.pressed = true;
+            if (!was_pressed) {
+                press_event_pending = true;
+                last_touch_time = millis();
+            }
+            last_touch.just_pressed = press_event_pending;
+        } else {
+            // Explicit lift-up with active touch point reported
             last_touch_time = millis();
+            press_event_pending = false;
+            last_touch.pressed = false;
+            last_touch.just_pressed = false;
         }
-    } else if (event_flag == 0x01) {
-        // Explicit lift-up from controller
-        dropout_count = 0;
-        last_touch_time = millis();
-        press_event_pending = false;
-        last_touch.pressed = false;
-        last_touch.just_pressed = false;
     } else {
         // No touch reported without explicit lift-up: tolerate 1-frame glitch during drag
-        if (was_pressed && dropout_count < 1) {
+        if (was_pressed && dropout_count < 1 && event_flag != 0x01) {
             dropout_count++;
             return;
         }

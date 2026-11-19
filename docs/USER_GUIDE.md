@@ -264,10 +264,10 @@ grinder.
 - **Device settings**: Brightness, startup/idle screensaver and **Turn Display
   Off** toggles remain available under **Menu → Display** and are synchronized
   with the web settings. The web app controls the additional off delay.
-- **Wake behaviour**: Touching the dark panel, changing the scale load or
-  starting a grind wakes it. The first wake touch is consumed so it cannot
-  accidentally press the control underneath. Lift your finger after waking
-  the panel, then use the next touch normally.
+- **Wake behaviour**: Touching the dimmed screensaver or dark panel, changing the
+  scale load or starting a grind wakes it. The first wake touch is consumed so
+  it cannot accidentally press the control underneath. Lift your finger after waking
+  the display, then use the next touch normally.
 - **Startup behavior**: On normal Ready boots, the image is drawn early while the full UI initializes, then the regular timed screensaver overlay takes over.
 - **OTA behavior**: During BLE OTA updates and OTA failure warnings, the screensaver is disabled so progress and recovery prompts stay visible.
 - **Grinding & menu behavior**: The screensaver is suppressed while grinding (active or paused), while viewing grind completion and timeout summaries, and while navigating the on-device menu. Leaving the menu or completing a grind resets the idle timer so the screensaver only activates after the full configured timeout on the Ready screen.

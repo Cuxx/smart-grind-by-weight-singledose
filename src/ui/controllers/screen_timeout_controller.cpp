@@ -182,6 +182,9 @@ void ScreenTimeoutController::restore_normal_display(DisplayManager* display) {
     bool screensaver_visible = screensaver_controller_ && screensaver_controller_->is_visible();
     if (screensaver_visible) {
         screensaver_controller_->hide();
+        if (display) {
+            display->suppress_wake_touch();
+        }
     }
 
     if (screen_dimmed_ || panel_off_ || screensaver_visible) {

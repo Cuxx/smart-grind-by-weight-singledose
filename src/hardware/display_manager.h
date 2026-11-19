@@ -63,6 +63,7 @@ public:
     void set_brightness(float brightness);
     void set_panel_power(bool powered_on);
     bool is_panel_powered_on() const { return panel_powered_on; }
+    void suppress_wake_touch();
     bool draw_rgb565_file(const char* path, uint16_t width, uint16_t height);
     
     uint32_t get_width() const { return screen_width; }

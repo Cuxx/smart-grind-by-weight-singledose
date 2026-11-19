@@ -6,6 +6,11 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+### Display and screensaver
+- **Screensaver Idle Wake Stability**: Fixed an issue where the screensaver repeatedly exited on its own when idle due to stale lift-up controller flags resetting the display inactivity timer.
+- **Reliable Single-Tap Wake**: Ensured that brief wake taps register user activity and wake the display on the very first touch without requiring a second tap.
+- **Wake Touch Suppression on Screensaver**: Waking the display from the active screensaver now consumes the initial wake touch until finger release, preventing accidental presses of controls on the underlying screen.
+
 ## [1.6.6-beta.2] - 2026-10-21
 
 ### Diagnostics & Calibration

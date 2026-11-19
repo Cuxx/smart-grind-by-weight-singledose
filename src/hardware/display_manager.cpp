@@ -456,6 +456,11 @@ void DisplayManager::set_brightness(float brightness) {
 #endif
 }
 
+void DisplayManager::suppress_wake_touch() {
+    consume_wake_touch_until_release = true;
+    wake_touch_guard_started_ms = millis();
+}
+
 void DisplayManager::set_panel_power(bool powered_on) {
 #if HW_DISPLAY_VARIANT_V2
     if (!initialized || !panel_handle) return;
