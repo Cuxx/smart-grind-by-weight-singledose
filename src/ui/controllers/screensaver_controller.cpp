@@ -242,7 +242,10 @@ void ScreensaverController::show() {
     // Save the current active screen so we can restore it on hide().
     // Screens in this project are created once and never deleted, so
     // this pointer remains valid for the lifetime of the application.
-    previous_screen_ = lv_scr_act();
+    lv_obj_t* act = lv_scr_act();
+    if (act && act != overlay_screen_) {
+        previous_screen_ = act;
+    }
 
     // Create a new screen for the overlay
     overlay_screen_ = lv_obj_create(nullptr);
@@ -299,7 +302,7 @@ void ScreensaverController::hide() {
     if (!visible_) return;
 
     // Restore the previous active screen before deleting the overlay.
-    if (previous_screen_) {
+    if (previous_screen_ && previous_screen_ != overlay_screen_) {
         lv_screen_load(previous_screen_);
         previous_screen_ = nullptr;
     }
