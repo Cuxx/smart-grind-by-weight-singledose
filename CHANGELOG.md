@@ -6,10 +6,19 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
-### Display and screensaver
+## [1.6.6-beta.3] - 2026-11-26
+
+### Display, Touch & Screensaver
+- **Automatic Touch I2C Recovery**: Added I2C error streak and unresponsive `0xFF` detection in `TouchDriver` with automatic `i2c_master_bus_reset`, 9-clock bus unstick, full I2C re-initialization, and `LOG_BLE` fault diagnostics.
 - **Screensaver Idle Wake Stability**: Fixed an issue where the screensaver repeatedly exited on its own when idle due to stale lift-up controller flags resetting the display inactivity timer.
-- **Reliable Single-Tap Wake**: Ensured that brief wake taps register user activity and wake the display on the very first touch without requiring a second tap.
-- **Wake Touch Suppression on Screensaver**: Waking the display from the active screensaver now consumes the initial wake touch until finger release, preventing accidental presses of controls on the underlying screen.
+- **Screensaver Grind & Menu Protection**: Prevented screensaver activation during active/paused grinds, completion/timeout screens, and menu navigation, resetting the idle timer on return to ready.
+- **Screensaver Transition Guard**: Prevented `previous_screen_` from referencing a deleted overlay screen during rapid screensaver toggles.
+- **Reliable Single-Tap Wake & Suppression**: Ensured brief wake taps wake the display on the first touch while consuming the initial wake touch until finger release to prevent accidental button presses.
+- **Wake Source Logging**: Added explicit `LOG_BLE` wake source logging (`touch` vs. `weight` with delta) in `ScreenTimeoutController`.
+
+### Load Cell & Calibration
+- **Window Delta Spike Rejection**: Added median-of-3 endpoint filtering in `CircularBufferMath::get_window_delta` so isolated raw ADC noise spikes no longer trigger false screensaver wakes or activity resets.
+- **Auto-Coast Calibration Feedback**: Added skip reason indicators, unlogged session banner, and slider feedback for automatic coast calibration.
 
 ## [1.6.6-beta.2] - 2026-10-21
 
