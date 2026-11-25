@@ -16,9 +16,16 @@ private:
     bool disabled = false;
     bool press_event_pending = false;
     uint8_t dropout_count = 0;
+    uint16_t consecutive_i2c_errors = 0;
+    uint16_t consecutive_ff_reads = 0;
+    uint32_t last_recovery_ms = 0;
+    uint32_t total_recoveries = 0;
     
     // Touch activity tracking
     uint32_t last_touch_time = 0;
+
+    bool init_i2c_bus();
+    void recover_i2c_bus(bool force_reinit);
 
 public:
     void init();
