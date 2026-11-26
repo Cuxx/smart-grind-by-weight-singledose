@@ -20,10 +20,13 @@ private:
     uint16_t consecutive_ff_reads = 0;
     uint32_t last_recovery_ms = 0;
     uint32_t total_recoveries = 0;
+    uint32_t last_health_check_ms = 0;
     
     // Touch activity tracking
     uint32_t last_touch_time = 0;
 
+    void hardware_reset();
+    bool configure_registers();
     bool init_i2c_bus();
     void recover_i2c_bus(bool force_reinit);
 
@@ -38,6 +41,12 @@ public:
     
     // Touch activity timing
     uint32_t get_ms_since_last_touch() const;
+
+    // Diagnostics
+    bool is_initialized() const { return initialized; }
+    bool is_disabled() const { return disabled; }
+    uint32_t get_total_recoveries() const { return total_recoveries; }
+    uint16_t get_consecutive_errors() const { return consecutive_i2c_errors; }
 
 private:
     i2c_master_bus_handle_t bus_handle = nullptr;

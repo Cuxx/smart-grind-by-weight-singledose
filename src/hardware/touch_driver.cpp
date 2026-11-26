@@ -11,6 +11,7 @@ constexpr int kTouchI2CTimeoutMs = 20;
 constexpr uint16_t kMaxConsecutiveI2CErrors = 15;
 constexpr uint16_t kMaxConsecutiveFFReads = 60;
 constexpr uint32_t kRecoveryCooldownMs = 2000;
+constexpr uint32_t kHealthCheckIntervalMs = 10000;
 constexpr char kTag[] = "TouchDriver";
 
 void pulse_i2c_recovery_clocks() {
@@ -57,6 +58,58 @@ void suppress_touch_i2c_logs() {
 }
 }
 
+void TouchDriver::hardware_reset() {
+#if defined(HW_TOUCH_RESET_PIN)
+    const gpio_num_t rst_pin = static_cast<gpio_num_t>(HW_TOUCH_RESET_PIN);
+    gpio_set_direction(rst_pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(rst_pin, 1);
+    delay(5);
+    gpio_set_level(rst_pin, 0);
+    delay(20);
+    gpio_set_level(rst_pin, 1);
+    delay(100);
+#endif
+}
+
+bool TouchDriver::configure_registers() {
+    if (device_handle == nullptr) {
+        return false;
+    }
+
+    // Register 0x00: DEV_MODE -> 0x00 (Normal Operating Mode)
+    uint8_t mode_cmd[2] = {0x00, 0x00};
+    esp_err_t err = i2c_master_transmit(device_handle, mode_cmd, sizeof(mode_cmd), kTouchI2CTimeoutMs);
+    if (err != ESP_OK) {
+        ESP_LOGW(kTag, "Failed to set DEV_MODE: %s", esp_err_to_name(err));
+    }
+
+    // Register 0x86: ID_G_CTRL -> 0x00 (Active Mode, disable auto-switch to Monitor Mode)
+    uint8_t ctrl_cmd[2] = {0x86, 0x00};
+    err = i2c_master_transmit(device_handle, ctrl_cmd, sizeof(ctrl_cmd), kTouchI2CTimeoutMs);
+    if (err != ESP_OK) {
+        ESP_LOGW(kTag, "Failed to set ID_G_CTRL: %s", esp_err_to_name(err));
+    }
+
+    // Register 0xA5: PMODE -> 0x00 (Active power mode)
+    uint8_t pmode_cmd[2] = {0xA5, 0x00};
+    err = i2c_master_transmit(device_handle, pmode_cmd, sizeof(pmode_cmd), kTouchI2CTimeoutMs);
+    if (err != ESP_OK) {
+        ESP_LOGW(kTag, "Failed to set PMODE: %s", esp_err_to_name(err));
+    }
+
+    // Read chip ID (register 0xA8) to verify responsiveness
+    uint8_t id_reg = 0xA8;
+    uint8_t chip_id = 0;
+    err = i2c_master_transmit_receive(device_handle, &id_reg, sizeof(id_reg), &chip_id, sizeof(chip_id), kTouchI2CTimeoutMs);
+    if (err == ESP_OK) {
+        ESP_LOGI(kTag, "FT3168 configured: Chip ID 0x%02X", chip_id);
+    } else {
+        ESP_LOGW(kTag, "FT3168 Chip ID read failed: %s", esp_err_to_name(err));
+    }
+
+    return (err == ESP_OK);
+}
+
 bool TouchDriver::init_i2c_bus() {
     if (bus_handle == nullptr) {
         i2c_master_bus_config_t bus_config = {};
@@ -83,11 +136,7 @@ bool TouchDriver::init_i2c_bus() {
         device_config.device_address = HW_TOUCH_I2C_ADDRESS;
         device_config.scl_speed_hz = kTouchI2CFrequencyHz;
         device_config.scl_wait_us = 0;
-#if DEBUG_SUPPRESS_TOUCH_I2C_ERRORS
-        device_config.flags.disable_ack_check = 1;  // Treat idle NACKs as benign when suppression enabled.
-#else
         device_config.flags.disable_ack_check = 0;
-#endif
 
         esp_err_t err = i2c_master_bus_add_device(bus_handle, &device_config, &device_handle);
         if (err != ESP_OK) {
@@ -100,33 +149,29 @@ bool TouchDriver::init_i2c_bus() {
 }
 
 void TouchDriver::recover_i2c_bus(bool force_reinit) {
+    (void)force_reinit;
     last_recovery_ms = millis();
+    last_health_check_ms = last_recovery_ms;
     total_recoveries++;
 
-    esp_err_t reset_err = ESP_FAIL;
-    if (!force_reinit && bus_handle != nullptr) {
-        reset_err = i2c_master_bus_reset(bus_handle);
-    }
+    hardware_reset();
 
-    if (force_reinit || reset_err != ESP_OK) {
-        if (device_handle != nullptr) {
-            i2c_master_bus_rm_device(device_handle);
-            device_handle = nullptr;
-        }
-        if (bus_handle != nullptr) {
-            i2c_del_master_bus(bus_handle);
-            bus_handle = nullptr;
-        }
-        pulse_i2c_recovery_clocks();
-        const bool reinit_ok = init_i2c_bus();
-        LOG_BLE("[TOUCH] I2C full bus re-init #%lu: %s (reset_err=%s)\n",
-                static_cast<unsigned long>(total_recoveries),
-                reinit_ok ? "OK" : "FAILED",
-                esp_err_to_name(reset_err));
-    } else {
-        LOG_BLE("[TOUCH] I2C bus reset #%lu: OK\n",
-                static_cast<unsigned long>(total_recoveries));
+    if (device_handle != nullptr) {
+        i2c_master_bus_rm_device(device_handle);
+        device_handle = nullptr;
     }
+    if (bus_handle != nullptr) {
+        i2c_del_master_bus(bus_handle);
+        bus_handle = nullptr;
+    }
+    pulse_i2c_recovery_clocks();
+    const bool reinit_ok = init_i2c_bus();
+    if (reinit_ok) {
+        configure_registers();
+    }
+    LOG_BLE("[TOUCH] I2C recovery #%lu: %s (HW reset + reinit)\n",
+            static_cast<unsigned long>(total_recoveries),
+            reinit_ok ? "OK" : "FAILED");
 
     consecutive_i2c_errors = 0;
     consecutive_ff_reads = 0;
@@ -142,10 +187,13 @@ void TouchDriver::init() {
     }
     suppress_touch_i2c_logs();
 
+    hardware_reset();
+
     if (!init_i2c_bus()) {
         disabled = true;
         return;
     }
+    configure_registers();
     
     last_touch = {0, 0, false, false};
     press_event_pending = false;
@@ -156,6 +204,7 @@ void TouchDriver::init() {
     
     // Initialize touch tracking
     last_touch_time = millis();
+    last_health_check_ms = last_touch_time;
 }
 
 void TouchDriver::update() {
@@ -166,19 +215,36 @@ void TouchDriver::update() {
     const bool was_pressed = last_touch.pressed;
     last_touch.just_pressed = press_event_pending;
 
+    // Periodic health check when idle
+    const uint32_t now_ms = millis();
+    if (!was_pressed && now_ms - last_health_check_ms >= kHealthCheckIntervalMs) {
+        last_health_check_ms = now_ms;
+        uint8_t id_reg = 0xA8;
+        uint8_t chip_id = 0;
+        esp_err_t check_err = i2c_master_transmit_receive(device_handle, &id_reg, sizeof(id_reg), &chip_id, sizeof(chip_id), kTouchI2CTimeoutMs);
+        if (check_err != ESP_OK || chip_id == 0xFF) {
+            LOG_BLE("[TOUCH] Health check failed (%s, id=0x%02X); recovering\n",
+                    esp_err_to_name(check_err), chip_id);
+            recover_i2c_bus(true);
+            return;
+        }
+        // Re-assert active mode so FT3168 never enters monitor/sleep mode
+        uint8_t ctrl_cmd[2] = {0x86, 0x00};
+        i2c_master_transmit(device_handle, ctrl_cmd, sizeof(ctrl_cmd), kTouchI2CTimeoutMs);
+    }
+
     uint8_t buf[5] = {0};
     uint8_t reg = 0x02; // FT3168_REG_NUM_TOUCHES
     esp_err_t err = i2c_master_transmit_receive(device_handle, &reg, sizeof(reg), buf, sizeof(buf), kTouchI2CTimeoutMs);
     if (err != ESP_OK) {
         consecutive_i2c_errors++;
         if (consecutive_i2c_errors >= kMaxConsecutiveI2CErrors &&
-            (millis() - last_recovery_ms >= kRecoveryCooldownMs)) {
+            (now_ms - last_recovery_ms >= kRecoveryCooldownMs)) {
             LOG_BLE("[TOUCH] I2C poll error streak=%u (%s); recovering\n",
                     consecutive_i2c_errors, esp_err_to_name(err));
-            recover_i2c_bus((total_recoveries % 2) == 1);
+            recover_i2c_bus(true);
             return;
         }
-        // Touch controller NACKs when no touch data - treat as no-touch without logging.
         if (err != ESP_ERR_INVALID_STATE && err != ESP_ERR_TIMEOUT) {
             ESP_LOGW(kTag, "Touch poll failed: %s", esp_err_to_name(err));
         }
@@ -188,7 +254,7 @@ void TouchDriver::update() {
         }
         dropout_count = 0;
         if (was_pressed) {
-            last_touch_time = millis();
+            last_touch_time = now_ms;
         }
         press_event_pending = false;
         last_touch.pressed = false;
@@ -200,7 +266,7 @@ void TouchDriver::update() {
     if (buf[0] == 0xFF && buf[1] == 0xFF && buf[2] == 0xFF && buf[3] == 0xFF && buf[4] == 0xFF) {
         consecutive_ff_reads++;
         if (consecutive_ff_reads >= kMaxConsecutiveFFReads &&
-            (millis() - last_recovery_ms >= kRecoveryCooldownMs)) {
+            (now_ms - last_recovery_ms >= kRecoveryCooldownMs)) {
             LOG_BLE("[TOUCH] Touch controller unresponsive (0xFF streak=%u); recovering\n",
                     consecutive_ff_reads);
             recover_i2c_bus(true);
@@ -226,12 +292,12 @@ void TouchDriver::update() {
             last_touch.pressed = true;
             if (!was_pressed) {
                 press_event_pending = true;
-                last_touch_time = millis();
+                last_touch_time = now_ms;
             }
             last_touch.just_pressed = press_event_pending;
         } else {
             // Explicit lift-up with active touch point reported
-            last_touch_time = millis();
+            last_touch_time = now_ms;
             press_event_pending = false;
             last_touch.pressed = false;
             last_touch.just_pressed = false;
@@ -244,7 +310,7 @@ void TouchDriver::update() {
         }
         dropout_count = 0;
         if (was_pressed) {
-            last_touch_time = millis();
+            last_touch_time = now_ms;
         }
         press_event_pending = false;
         last_touch.pressed = false;
@@ -262,6 +328,11 @@ void TouchDriver::disable() {
 
 void TouchDriver::enable() {
     disabled = false;
+    last_touch.pressed = false;  // Ensure clean state upon re-enabling
+    last_touch.just_pressed = false;
+    press_event_pending = false;
+    dropout_count = 0;
+    last_touch_time = millis();
 }
 
 void TouchDriver::consume_press_event() {
@@ -270,6 +341,8 @@ void TouchDriver::consume_press_event() {
 }
 
 uint32_t TouchDriver::get_ms_since_last_touch() const {
-    if (!initialized || disabled) return 0;
+    if (last_touch.pressed) {
+        return 0;
+    }
     return millis() - last_touch_time;
 }

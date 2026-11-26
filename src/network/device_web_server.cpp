@@ -451,6 +451,12 @@ void DeviceWebServer::configure_routes() {
         const String device_id = json_escape(network_manager.device_id());
         const String network_name = json_escape(network_manager.network_name());
         const String ip_address = json_escape(network_manager.ip_address());
+        auto* display = device_web_server.hardware_manager_ ? device_web_server.hardware_manager_->get_display() : nullptr;
+        auto* touch = display ? display->get_touch_driver() : nullptr;
+        const bool touch_init = touch && touch->is_initialized();
+        const uint32_t touch_recov = touch ? touch->get_total_recoveries() : 0;
+        const uint32_t touch_last_ms = touch ? touch->get_ms_since_last_touch() : 0;
+        const uint16_t touch_errs = touch ? touch->get_consecutive_errors() : 0;
         response->printf(
             "{\"api\":\"v1\",\"device\":{\"id\":\"%s\",\"model\":\"ESP32-S3-Touch-AMOLED-1.64\",\"hardware_revision\":\"%s\"},"
             "\"capabilities\":{\"protocol\":1,\"transport\":\"websocket\",\"path\":\"/ws\",\"state_interval_ms\":100,"
@@ -459,6 +465,7 @@ void DeviceWebServer::configure_routes() {
             "\"network\":{\"state\":\"%s\",\"hostname\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d},"
             "\"system\":{\"uptime_ms\":%lu,\"free_heap\":%u,\"free_internal_heap\":%u,"
             "\"largest_internal_block\":%u,\"free_psram\":%u},"
+            "\"touch\":{\"initialized\":%s,\"recoveries\":%lu,\"last_touch_ms_ago\":%lu,\"consecutive_errors\":%u},"
             "\"ota\":{\"active\":%s,\"preparing\":%s,\"ready\":%s,\"progress\":%u,\"failed\":%s}}",
             device_id.c_str(),
             HW_DISPLAY_REVISION,
@@ -476,6 +483,10 @@ void DeviceWebServer::configure_routes() {
             static_cast<unsigned int>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
             static_cast<unsigned int>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
             static_cast<unsigned int>(ESP.getFreePsram()),
+            touch_init ? "true" : "false",
+            static_cast<unsigned long>(touch_recov),
+            static_cast<unsigned long>(touch_last_ms),
+            static_cast<unsigned int>(touch_errs),
             device_web_server.is_ota_active() ? "true" : "false",
             device_web_server.is_ota_preparing() ? "true" : "false",
             device_web_server.is_ota_ready() ? "true" : "false",

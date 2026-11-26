@@ -6,6 +6,15 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+## [1.6.6-beta.4] - 2026-11-26
+
+### Display & Touch Stability
+- **Touch Hardware Reset (GPIO 8)**: Added dedicated hardware reset line control on GPIO 8 (`TP_RST`) during boot initialization and bus recovery, physically resetting the FT3168 controller when stuck or uncalibrated.
+- **FT3168 Power & Mode Locking**: Explicitly programmed `DEV_MODE` (0x00), `ID_G_CTRL` (0x00, disable auto-switch to low-power monitor mode), and `PMODE` (0x00, Active mode) to prevent the controller from entering low-power sleep states during prolonged idle periods.
+- **I2C ACK Verification**: Enabled I2C ACK checking (`disable_ack_check = 0`) to immediately detect missing slave responses and NACK conditions.
+- **Touch Health Check & Periodic Affirmation**: Added a periodic 10-second idle health check verifying FT3168 communication via Chip ID read and re-asserting Active Mode to eliminate register drift.
+- **Touch Telemetry in Device Status**: Added live `touch` diagnostic metrics (`initialized`, `recoveries`, `last_touch_ms_ago`, `consecutive_errors`) to `/api/v1/status`.
+
 ## [1.6.6-beta.3] - 2026-11-26
 
 ### Display, Touch & Screensaver

@@ -15,6 +15,7 @@
 #define HW_TOUCH_I2C_SDA_PIN 47                                                // I2C data pin for capacitive touch controller
 #define HW_TOUCH_I2C_SCL_PIN 48                                                // I2C clock pin for capacitive touch controller
 #define HW_TOUCH_I2C_ADDRESS 0x38                                              // I2C address of FT3168 touch controller
+#define HW_TOUCH_RESET_PIN 8                                                    // Hardware reset pin for FT3168 touch controller
 
 // Display Controller (QSPI)
 #ifndef HW_DISPLAY_VARIANT_V2
