@@ -97,15 +97,23 @@ bool TouchDriver::configure_registers() {
         ESP_LOGW(kTag, "Failed to set PMODE: %s", esp_err_to_name(err));
     }
 
-    // Read chip ID (register 0xA8) to verify responsiveness
+    // Read chip ID (register 0xA8) and control registers to verify responsiveness
     uint8_t id_reg = 0xA8;
     uint8_t chip_id = 0;
     err = i2c_master_transmit_receive(device_handle, &id_reg, sizeof(id_reg), &chip_id, sizeof(chip_id), kTouchI2CTimeoutMs);
     if (err == ESP_OK) {
+        diag_chip_id = chip_id;
         ESP_LOGI(kTag, "FT3168 configured: Chip ID 0x%02X", chip_id);
     } else {
         ESP_LOGW(kTag, "FT3168 Chip ID read failed: %s", esp_err_to_name(err));
     }
+
+    uint8_t r = 0x00;
+    i2c_master_transmit_receive(device_handle, &r, 1, &diag_dev_mode, 1, kTouchI2CTimeoutMs);
+    r = 0x86;
+    i2c_master_transmit_receive(device_handle, &r, 1, &diag_ctrl, 1, kTouchI2CTimeoutMs);
+    r = 0xA5;
+    i2c_master_transmit_receive(device_handle, &r, 1, &diag_pmode, 1, kTouchI2CTimeoutMs);
 
     return (err == ESP_OK);
 }
@@ -222,12 +230,19 @@ void TouchDriver::update() {
         uint8_t id_reg = 0xA8;
         uint8_t chip_id = 0;
         esp_err_t check_err = i2c_master_transmit_receive(device_handle, &id_reg, sizeof(id_reg), &chip_id, sizeof(chip_id), kTouchI2CTimeoutMs);
-        if (check_err != ESP_OK || chip_id == 0xFF) {
+        if (check_err != ESP_OK || chip_id == 0xFF || chip_id == 0x00) {
             LOG_BLE("[TOUCH] Health check failed (%s, id=0x%02X); recovering\n",
                     esp_err_to_name(check_err), chip_id);
             recover_i2c_bus(true);
             return;
         }
+        diag_chip_id = chip_id;
+        uint8_t r = 0x00;
+        i2c_master_transmit_receive(device_handle, &r, 1, &diag_dev_mode, 1, kTouchI2CTimeoutMs);
+        r = 0x86;
+        i2c_master_transmit_receive(device_handle, &r, 1, &diag_ctrl, 1, kTouchI2CTimeoutMs);
+        r = 0xA5;
+        i2c_master_transmit_receive(device_handle, &r, 1, &diag_pmode, 1, kTouchI2CTimeoutMs);
         // Re-assert active mode so FT3168 never enters monitor/sleep mode
         uint8_t ctrl_cmd[2] = {0x86, 0x00};
         i2c_master_transmit(device_handle, ctrl_cmd, sizeof(ctrl_cmd), kTouchI2CTimeoutMs);
@@ -263,6 +278,7 @@ void TouchDriver::update() {
     }
 
     consecutive_i2c_errors = 0;
+    memcpy(diag_last_buf, buf, sizeof(diag_last_buf));
     if (buf[0] == 0xFF && buf[1] == 0xFF && buf[2] == 0xFF && buf[3] == 0xFF && buf[4] == 0xFF) {
         consecutive_ff_reads++;
         if (consecutive_ff_reads >= kMaxConsecutiveFFReads &&

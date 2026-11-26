@@ -6,6 +6,12 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+## [1.6.6-beta.5] - 2026-11-26
+
+### Display & Touch Stability
+- **V1 Touch Reset Scoping**: Scoped `HW_TOUCH_RESET_PIN` (GPIO 8) to V2/V1.1 hardware targets only, as V1 boards do not wire `TP_RST` to GPIO 8.
+- **Frozen Chip ID (`0x00`) Detection & Telemetry**: Added `0x00` Chip ID failure detection to the 10-second touch health check and exposed FT3168 register diagnostics (`chip_id`, `dev_mode`, `ctrl`, `pmode`, `buf`) in `/api/v1/status`.
+
 ## [1.6.6-beta.4] - 2026-11-26
 
 ### Display & Touch Stability

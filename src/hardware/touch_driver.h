@@ -21,6 +21,11 @@ private:
     uint32_t last_recovery_ms = 0;
     uint32_t total_recoveries = 0;
     uint32_t last_health_check_ms = 0;
+    uint8_t diag_chip_id = 0;
+    uint8_t diag_dev_mode = 0;
+    uint8_t diag_ctrl = 0;
+    uint8_t diag_pmode = 0;
+    uint8_t diag_last_buf[5] = {0, 0, 0, 0, 0};
     
     // Touch activity tracking
     uint32_t last_touch_time = 0;
@@ -47,6 +52,11 @@ public:
     bool is_disabled() const { return disabled; }
     uint32_t get_total_recoveries() const { return total_recoveries; }
     uint16_t get_consecutive_errors() const { return consecutive_i2c_errors; }
+    uint8_t get_diag_chip_id() const { return diag_chip_id; }
+    uint8_t get_diag_dev_mode() const { return diag_dev_mode; }
+    uint8_t get_diag_ctrl() const { return diag_ctrl; }
+    uint8_t get_diag_pmode() const { return diag_pmode; }
+    const uint8_t* get_diag_last_buf() const { return diag_last_buf; }
 
 private:
     i2c_master_bus_handle_t bus_handle = nullptr;

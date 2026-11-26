@@ -457,6 +457,7 @@ void DeviceWebServer::configure_routes() {
         const uint32_t touch_recov = touch ? touch->get_total_recoveries() : 0;
         const uint32_t touch_last_ms = touch ? touch->get_ms_since_last_touch() : 0;
         const uint16_t touch_errs = touch ? touch->get_consecutive_errors() : 0;
+        const uint8_t* touch_buf = touch ? touch->get_diag_last_buf() : nullptr;
         response->printf(
             "{\"api\":\"v1\",\"device\":{\"id\":\"%s\",\"model\":\"ESP32-S3-Touch-AMOLED-1.64\",\"hardware_revision\":\"%s\"},"
             "\"capabilities\":{\"protocol\":1,\"transport\":\"websocket\",\"path\":\"/ws\",\"state_interval_ms\":100,"
@@ -465,7 +466,9 @@ void DeviceWebServer::configure_routes() {
             "\"network\":{\"state\":\"%s\",\"hostname\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d},"
             "\"system\":{\"uptime_ms\":%lu,\"free_heap\":%u,\"free_internal_heap\":%u,"
             "\"largest_internal_block\":%u,\"free_psram\":%u},"
-            "\"touch\":{\"initialized\":%s,\"recoveries\":%lu,\"last_touch_ms_ago\":%lu,\"consecutive_errors\":%u},"
+            "\"touch\":{\"initialized\":%s,\"recoveries\":%lu,\"last_touch_ms_ago\":%lu,\"consecutive_errors\":%u,"
+            "\"chip_id\":\"0x%02X\",\"dev_mode\":\"0x%02X\",\"ctrl\":\"0x%02X\",\"pmode\":\"0x%02X\","
+            "\"buf\":\"%02X %02X %02X %02X %02X\"},"
             "\"ota\":{\"active\":%s,\"preparing\":%s,\"ready\":%s,\"progress\":%u,\"failed\":%s}}",
             device_id.c_str(),
             HW_DISPLAY_REVISION,
@@ -487,6 +490,15 @@ void DeviceWebServer::configure_routes() {
             static_cast<unsigned long>(touch_recov),
             static_cast<unsigned long>(touch_last_ms),
             static_cast<unsigned int>(touch_errs),
+            touch ? touch->get_diag_chip_id() : 0,
+            touch ? touch->get_diag_dev_mode() : 0,
+            touch ? touch->get_diag_ctrl() : 0,
+            touch ? touch->get_diag_pmode() : 0,
+            touch_buf ? touch_buf[0] : 0,
+            touch_buf ? touch_buf[1] : 0,
+            touch_buf ? touch_buf[2] : 0,
+            touch_buf ? touch_buf[3] : 0,
+            touch_buf ? touch_buf[4] : 0,
             device_web_server.is_ota_active() ? "true" : "false",
             device_web_server.is_ota_preparing() ? "true" : "false",
             device_web_server.is_ota_ready() ? "true" : "false",
