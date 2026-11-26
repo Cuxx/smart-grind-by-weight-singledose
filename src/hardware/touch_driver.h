@@ -20,6 +20,7 @@ private:
     uint16_t consecutive_ff_reads = 0;
     uint32_t last_recovery_ms = 0;
     uint32_t total_recoveries = 0;
+    uint16_t consecutive_failed_recoveries = 0;
     uint32_t last_health_check_ms = 0;
     uint8_t diag_chip_id = 0;
     uint8_t diag_dev_mode = 0;
@@ -34,6 +35,7 @@ private:
     bool configure_registers();
     bool init_i2c_bus();
     void recover_i2c_bus(bool force_reinit);
+    uint32_t current_recovery_cooldown_ms() const;
 
 public:
     void init();

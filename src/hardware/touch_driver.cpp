@@ -10,7 +10,8 @@ constexpr uint32_t kTouchI2CFrequencyHz = 400000;
 constexpr int kTouchI2CTimeoutMs = 20;
 constexpr uint16_t kMaxConsecutiveI2CErrors = 15;
 constexpr uint16_t kMaxConsecutiveFFReads = 60;
-constexpr uint32_t kRecoveryCooldownMs = 2000;
+constexpr uint32_t kRecoveryCooldownMs = 10000;
+constexpr uint32_t kMaxRecoveryCooldownMs = 300000;
 constexpr uint32_t kHealthCheckIntervalMs = 10000;
 constexpr char kTag[] = "TouchDriver";
 
@@ -156,11 +157,21 @@ bool TouchDriver::init_i2c_bus() {
     return true;
 }
 
+uint32_t TouchDriver::current_recovery_cooldown_ms() const {
+    uint32_t cooldown = kRecoveryCooldownMs;
+    const uint16_t shift = consecutive_failed_recoveries > 5 ? 5 : consecutive_failed_recoveries;
+    cooldown <<= shift;
+    return cooldown > kMaxRecoveryCooldownMs ? kMaxRecoveryCooldownMs : cooldown;
+}
+
 void TouchDriver::recover_i2c_bus(bool force_reinit) {
     (void)force_reinit;
     last_recovery_ms = millis();
     last_health_check_ms = last_recovery_ms;
     total_recoveries++;
+    if (consecutive_failed_recoveries < 1000) {
+        consecutive_failed_recoveries++;
+    }
 
     hardware_reset();
 
@@ -177,9 +188,10 @@ void TouchDriver::recover_i2c_bus(bool force_reinit) {
     if (reinit_ok) {
         configure_registers();
     }
-    LOG_BLE("[TOUCH] I2C recovery #%lu: %s (HW reset + reinit)\n",
+    LOG_BLE("[TOUCH] I2C recovery #%lu: %s (next_cooldown=%lus)\n",
             static_cast<unsigned long>(total_recoveries),
-            reinit_ok ? "OK" : "FAILED");
+            reinit_ok ? "OK" : "FAILED",
+            static_cast<unsigned long>(current_recovery_cooldown_ms() / 1000U));
 
     consecutive_i2c_errors = 0;
     consecutive_ff_reads = 0;
@@ -225,7 +237,8 @@ void TouchDriver::update() {
 
     // Periodic health check when idle
     const uint32_t now_ms = millis();
-    if (!was_pressed && now_ms - last_health_check_ms >= kHealthCheckIntervalMs) {
+    const uint32_t active_cooldown_ms = current_recovery_cooldown_ms();
+    if (!was_pressed && now_ms - last_health_check_ms >= active_cooldown_ms) {
         last_health_check_ms = now_ms;
         uint8_t id_reg = 0xA8;
         uint8_t chip_id = 0;
@@ -243,9 +256,15 @@ void TouchDriver::update() {
         i2c_master_transmit_receive(device_handle, &r, 1, &diag_ctrl, 1, kTouchI2CTimeoutMs);
         r = 0xA5;
         i2c_master_transmit_receive(device_handle, &r, 1, &diag_pmode, 1, kTouchI2CTimeoutMs);
-        // Re-assert active mode so FT3168 never enters monitor/sleep mode
-        uint8_t ctrl_cmd[2] = {0x86, 0x00};
-        i2c_master_transmit(device_handle, ctrl_cmd, sizeof(ctrl_cmd), kTouchI2CTimeoutMs);
+        // Re-assert active mode only if controller drifted from active mode
+        if (diag_ctrl != 0x00) {
+            uint8_t ctrl_cmd[2] = {0x86, 0x00};
+            i2c_master_transmit(device_handle, ctrl_cmd, sizeof(ctrl_cmd), kTouchI2CTimeoutMs);
+        }
+        if (diag_pmode != 0x00) {
+            uint8_t pmode_cmd[2] = {0xA5, 0x00};
+            i2c_master_transmit(device_handle, pmode_cmd, sizeof(pmode_cmd), kTouchI2CTimeoutMs);
+        }
     }
 
     uint8_t buf[5] = {0};
@@ -254,7 +273,7 @@ void TouchDriver::update() {
     if (err != ESP_OK) {
         consecutive_i2c_errors++;
         if (consecutive_i2c_errors >= kMaxConsecutiveI2CErrors &&
-            (now_ms - last_recovery_ms >= kRecoveryCooldownMs)) {
+            (now_ms - last_recovery_ms >= active_cooldown_ms)) {
             LOG_BLE("[TOUCH] I2C poll error streak=%u (%s); recovering\n",
                     consecutive_i2c_errors, esp_err_to_name(err));
             recover_i2c_bus(true);
@@ -282,7 +301,7 @@ void TouchDriver::update() {
     if (buf[0] == 0xFF && buf[1] == 0xFF && buf[2] == 0xFF && buf[3] == 0xFF && buf[4] == 0xFF) {
         consecutive_ff_reads++;
         if (consecutive_ff_reads >= kMaxConsecutiveFFReads &&
-            (now_ms - last_recovery_ms >= kRecoveryCooldownMs)) {
+            (now_ms - last_recovery_ms >= active_cooldown_ms)) {
             LOG_BLE("[TOUCH] Touch controller unresponsive (0xFF streak=%u); recovering\n",
                     consecutive_ff_reads);
             recover_i2c_bus(true);
@@ -300,6 +319,7 @@ void TouchDriver::update() {
     uint8_t event_flag = (buf[1] >> 6) & 0x03; // 0x00: Down, 0x01: Up, 0x02: Contact, 0x03: No Event
 
     if (touches > 0) {
+        consecutive_failed_recoveries = 0;
         dropout_count = 0;
         last_touch.x = ((buf[1] & 0x0F) << 8) | buf[2];
         last_touch.y = ((buf[3] & 0x0F) << 8) | buf[4];

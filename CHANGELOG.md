@@ -6,6 +6,12 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+## [1.6.6-beta.6] - 2026-11-26
+
+### Display & Touch Stability
+- **Touch Recovery Backoff**: Added exponential backoff (10s to 300s) for consecutive failed touch I2C recoveries, and skipped redundant `0x86` / `0xA5` register writes when the controller is already in active mode.
+- **Display Metrics Telemetry**: Added live `display` render metrics (`panel_on`, `ui_calls`, `refreshes`, `flushes`) to `/api/v1/status`.
+
 ## [1.6.6-beta.5] - 2026-11-26
 
 ### Display & Touch Stability

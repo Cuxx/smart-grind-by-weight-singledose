@@ -458,6 +458,8 @@ void DeviceWebServer::configure_routes() {
         const uint32_t touch_last_ms = touch ? touch->get_ms_since_last_touch() : 0;
         const uint16_t touch_errs = touch ? touch->get_consecutive_errors() : 0;
         const uint8_t* touch_buf = touch ? touch->get_diag_last_buf() : nullptr;
+        const DisplayPerformanceSnapshot disp_perf = display ? display->get_performance_snapshot() : DisplayPerformanceSnapshot{};
+        const bool disp_panel_on = display ? display->is_panel_powered_on() : false;
         response->printf(
             "{\"api\":\"v1\",\"device\":{\"id\":\"%s\",\"model\":\"ESP32-S3-Touch-AMOLED-1.64\",\"hardware_revision\":\"%s\"},"
             "\"capabilities\":{\"protocol\":1,\"transport\":\"websocket\",\"path\":\"/ws\",\"state_interval_ms\":100,"
@@ -466,6 +468,7 @@ void DeviceWebServer::configure_routes() {
             "\"network\":{\"state\":\"%s\",\"hostname\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d},"
             "\"system\":{\"uptime_ms\":%lu,\"free_heap\":%u,\"free_internal_heap\":%u,"
             "\"largest_internal_block\":%u,\"free_psram\":%u},"
+            "\"display\":{\"panel_on\":%s,\"ui_calls\":%lu,\"refreshes\":%lu,\"flushes\":%lu},"
             "\"touch\":{\"initialized\":%s,\"recoveries\":%lu,\"last_touch_ms_ago\":%lu,\"consecutive_errors\":%u,"
             "\"chip_id\":\"0x%02X\",\"dev_mode\":\"0x%02X\",\"ctrl\":\"0x%02X\",\"pmode\":\"0x%02X\","
             "\"buf\":\"%02X %02X %02X %02X %02X\"},"
@@ -486,6 +489,10 @@ void DeviceWebServer::configure_routes() {
             static_cast<unsigned int>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
             static_cast<unsigned int>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
             static_cast<unsigned int>(ESP.getFreePsram()),
+            disp_panel_on ? "true" : "false",
+            static_cast<unsigned long>(disp_perf.ui_calls),
+            static_cast<unsigned long>(disp_perf.refreshes),
+            static_cast<unsigned long>(disp_perf.flushes),
             touch_init ? "true" : "false",
             static_cast<unsigned long>(touch_recov),
             static_cast<unsigned long>(touch_last_ms),
