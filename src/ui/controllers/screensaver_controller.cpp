@@ -100,6 +100,15 @@ uint8_t ScreensaverController::selected_clock_pos_y() const {
     return 50;
 }
 
+uint8_t ScreensaverController::selected_clock_spacing() const {
+    Preferences preferences;
+    if (!preferences.begin("screensaver", true)) return 100;
+    uint8_t sp = preferences.getUChar("clock_spacing", 100);
+    preferences.end();
+    if (sp < 50 || sp > 180) sp = 100;
+    return sp;
+}
+
 String ScreensaverController::selected_clock_layout() const {
     Preferences preferences;
     if (!preferences.begin("screensaver", true)) return "horizontal";
@@ -743,9 +752,10 @@ void ScreensaverController::update_clock() {
         lv_obj_remove_flag(minutes_label_, LV_OBJ_FLAG_HIDDEN);
 
         const int32_t line_h = font ? font->line_height : 160;
-        int16_t half_gap = static_cast<int16_t>(line_h * 0.45f);
-        if (half_gap < 35) half_gap = 35;
-        if (half_gap > 95) half_gap = 95;
+        const uint8_t spacing = selected_clock_spacing();
+        int16_t half_gap = static_cast<int16_t>(line_h * 0.52f * (spacing / 100.0f));
+        if (half_gap < 30) half_gap = 30;
+        if (half_gap > 160) half_gap = 160;
 
         const uint8_t pos_y = selected_clock_pos_y();
         const int16_t offset_y = static_cast<int16_t>((static_cast<int>(pos_y) - 50) * 2.0f);
