@@ -142,7 +142,7 @@ int main() {
     strcpy(update.screensaver_style, "gaggimate");
     assert(api.apply_settings(update));
     const int total_writes = Preferences::writes, total_opens = Preferences::opens;
-    assert(total_writes == 25 && total_opens == 10);
+    assert(total_writes == 26 && total_opens == 10);
     assert(control.motor_response_latency_ms == 100 && control.coast_ratio_ == 2);
     // Applying a legacy form preserves the current panel-off values while
     // still using the checked persistence path.

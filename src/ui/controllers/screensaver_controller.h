@@ -62,11 +62,12 @@ private:
     String selected_clock_position() const;
     uint8_t selected_clock_pos_y() const;
     uint8_t selected_clock_spacing() const;
+    uint8_t selected_clock_scale() const;
     String selected_clock_layout() const;
     uint32_t selected_clock_color() const;
     String selected_clock_font() const;
     String selected_clock_size() const;
-    int32_t calculate_fitted_custom_font_size(const String& layout, const String& size_choice);
+    int32_t calculate_fitted_custom_font_size(const String& layout, const String& size_choice, uint8_t scale_percent = 100);
     uint32_t clock_color_ = 0xFFFFFF;
     String clock_font_choice_ = "montserrat";
     String clock_size_choice_ = "auto";
@@ -80,7 +81,7 @@ private:
     bool has_custom_clock_font() const;
     bool load_custom_font(int32_t font_size);
     void free_custom_font();
-    const lv_font_t* resolve_clock_font(const String& layout, const String& font_choice, const String& size_choice = "auto");
+    const lv_font_t* resolve_clock_font(const String& layout, const String& font_choice, const String& size_choice = "auto", uint8_t scale_percent = 100);
     bool create_builtin(const String& style);
     bool create_clock();
     void update_builtin();

@@ -47,6 +47,7 @@ struct DeviceSettingsUpdate {
     char clock_position[16] = "center";
     uint8_t clock_pos_y = 50;
     uint8_t clock_spacing = 100;
+    uint8_t clock_scale = 100;
     char clock_layout[16] = "horizontal";
     char clock_color[16] = "#FFFFFF";
     char clock_font[16] = "montserrat";

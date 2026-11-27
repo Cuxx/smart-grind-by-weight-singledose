@@ -13,7 +13,7 @@ assert.ok(start >= 0 && end > start, 'screensaver visibility helpers must be pre
 
 const fields = new Map();
 const controls = new Map();
-for (const id of ['clockLayout', 'clockSpacing', 'clockPosition', 'clockPosY', 'clockFont', 'clockSize', 'clockColor', 'timezone',
+for (const id of ['clockLayout', 'clockSpacing', 'clockPosition', 'clockPosY', 'clockFont', 'clockSize', 'clockScale', 'clockColor', 'timezone',
   'gaggimateHost', 'purgeAmount', 'freshness']) {
   const field = {hidden: false};
   fields.set(id, field);
@@ -36,7 +36,7 @@ vm.runInContext(script.slice(start, end), context);
 
 const assertVisibility = (style, clockVisible, gaggimateVisible) => {
   context.selectStyle(style);
-  for (const id of ['clockLayout', 'clockSpacing', 'clockPosition', 'clockPosY', 'clockFont', 'clockSize', 'clockColor', 'timezone']) {
+  for (const id of ['clockLayout', 'clockSpacing', 'clockPosition', 'clockPosY', 'clockFont', 'clockSize', 'clockScale', 'clockColor', 'timezone']) {
     assert.equal(fields.get(id).hidden, !clockVisible, `${id} visibility for ${style}`);
   }
   assert.equal(controls.get('chooseClockFont').hidden, !clockVisible, `font upload visibility for ${style}`);
