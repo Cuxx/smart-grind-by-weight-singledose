@@ -48,6 +48,7 @@ struct DeviceSettingsUpdate {
     char clock_layout[16] = "horizontal";
     char clock_color[16] = "#FFFFFF";
     char clock_font[16] = "montserrat";
+    char clock_size[16] = "auto";
     char timezone[36] = "CET-1CEST,M3.5.0,M10.5.0/3";
     char gaggimate_host[64] = "gaggimate.local";
     bool bluetooth_startup = true;

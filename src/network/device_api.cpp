@@ -630,6 +630,13 @@ bool DeviceApi::queue_settings_update(AsyncWebServerRequest* request) {
             strncpy(settings.clock_font, clock_f.c_str(), sizeof(settings.clock_font) - 1);
         }
     }
+    if (request->hasParam("clock_size", true)) {
+        const String clock_s = value("clock_size");
+        if (clock_s == "auto" || clock_s == "small" || clock_s == "medium" ||
+            clock_s == "large" || clock_s == "xlarge" || clock_s == "huge") {
+            strncpy(settings.clock_size, clock_s.c_str(), sizeof(settings.clock_size) - 1);
+        }
+    }
     if (request->hasParam("timezone", true)) {
         const String tz = value("timezone");
         strncpy(settings.timezone, tz.c_str(), sizeof(settings.timezone) - 1);
@@ -881,7 +888,8 @@ bool DeviceApi::apply_settings(const DeviceSettingsUpdate& update) {
         const bool layout_saved = screensaver.putString("clock_layout", settings.clock_layout) == strlen(settings.clock_layout);
         const bool color_saved = screensaver.putString("clock_color", settings.clock_color) == strlen(settings.clock_color);
         const bool font_saved = screensaver.putString("clock_font", settings.clock_font) == strlen(settings.clock_font);
-        saved = style_saved && pos_saved && layout_saved && color_saved && font_saved && saved;
+        const bool size_saved = screensaver.putString("clock_size", settings.clock_size) == strlen(settings.clock_size);
+        saved = style_saved && pos_saved && layout_saved && color_saved && font_saved && size_saved && saved;
         const String stored_style = screensaver.getString("style", "");
         screensaver.end();
         const bool style_read = stored_style == "minimal" || stored_style == "orbit" ||
@@ -946,12 +954,14 @@ void DeviceApi::refresh_settings_cache() {
     String clock_layout = "horizontal";
     String clock_color = "#FFFFFF";
     String clock_font = "montserrat";
+    String clock_size = "auto";
     if (screensaver_preferences.begin("screensaver", true)) {
         screensaver_style = screensaver_preferences.getString("style", screensaver_style);
         clock_position = screensaver_preferences.getString("clock_pos", "center");
         clock_layout = screensaver_preferences.getString("clock_layout", "horizontal");
         clock_color = screensaver_preferences.getString("clock_color", "#FFFFFF");
         clock_font = screensaver_preferences.getString("clock_font", "montserrat");
+        clock_size = screensaver_preferences.getString("clock_size", "auto");
         screensaver_preferences.end();
     }
     const String timezone = network_manager.timezone();
@@ -982,7 +992,7 @@ void DeviceApi::refresh_settings_cache() {
              "\"screensaver_idle_timeout_s\":%u,\"screensaver_startup_timeout_s\":%u,"
              "\"display_off_enabled\":%s,\"display_off_delay_s\":%u,\"wake_on_weight_threshold_g\":%.1f,"
              "\"grind_layout\":%d,\"disc_color\":%d,"
-             "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"clock_font\":\"%s\",\"timezone\":\"%s\","
+             "\"screensaver_style\":\"%s\",\"clock_position\":\"%s\",\"clock_layout\":\"%s\",\"clock_color\":\"%s\",\"clock_font\":\"%s\",\"clock_size\":\"%s\",\"timezone\":\"%s\","
              "\"has_custom_screensaver\":%s,\"has_custom_clock_font\":%s,"
              "\"gaggimate_host\":\"%s\"},"
              "\"wifi_tab\":%s,\"wifi_icon_menu\":%s,\"wifi_performance_mode\":%s,\"bluetooth_startup\":%s,\"bluetooth_icon_menu\":%s,\"mode_icons\":%s,"
@@ -1014,7 +1024,7 @@ void DeviceApi::refresh_settings_cache() {
              screensaver_timing.wake_on_weight_threshold_g,
              grind_layout,
              disc_color,
-             screensaver_style.c_str(), clock_position.c_str(), clock_layout.c_str(), clock_color.c_str(), clock_font.c_str(), timezone.c_str(),
+             screensaver_style.c_str(), clock_position.c_str(), clock_layout.c_str(), clock_color.c_str(), clock_font.c_str(), clock_size.c_str(), timezone.c_str(),
              LittleFS.exists(BLE_IMAGE_FILENAME) ? "true" : "false",
              LittleFS.exists(CLOCK_FONT_FILENAME) ? "true" : "false",
              gaggimate_host.c_str(),
