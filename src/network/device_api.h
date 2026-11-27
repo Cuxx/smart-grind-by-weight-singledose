@@ -44,7 +44,8 @@ struct DeviceSettingsUpdate {
     bool has_wake_on_weight = false;
     float wake_on_weight_threshold_g = 1.0f;
     char screensaver_style[16] = "minimal";
-    char clock_position[8] = "center";
+    char clock_position[16] = "center";
+    uint8_t clock_pos_y = 50;
     char clock_layout[16] = "horizontal";
     char clock_color[16] = "#FFFFFF";
     char clock_font[16] = "montserrat";

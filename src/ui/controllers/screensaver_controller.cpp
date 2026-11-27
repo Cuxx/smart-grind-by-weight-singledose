@@ -78,10 +78,26 @@ String ScreensaverController::selected_clock_position() const {
     if (!preferences.begin("screensaver", true)) return "center";
     const String pos = preferences.getString("clock_pos", "center");
     preferences.end();
-    if (pos == "top" || pos == "bottom" || pos == "center") {
+    if (pos == "top" || pos == "bottom" || pos == "center" || pos == "custom") {
         return pos;
     }
     return "center";
+}
+
+uint8_t ScreensaverController::selected_clock_pos_y() const {
+    Preferences preferences;
+    if (!preferences.begin("screensaver", true)) return 50;
+    const String pos = preferences.getString("clock_pos", "center");
+    uint8_t y = preferences.getUChar("clock_pos_y", 50);
+    preferences.end();
+    if (pos == "top") return 15;
+    if (pos == "bottom") return 85;
+    if (pos == "center") return 50;
+    if (pos == "custom") {
+        if (y > 100) y = 100;
+        return y;
+    }
+    return 50;
 }
 
 String ScreensaverController::selected_clock_layout() const {
@@ -255,28 +271,28 @@ int32_t ScreensaverController::calculate_fitted_custom_font_size(const String& l
     if (size_choice == "auto") {
         if (is_stacked) {
             const float size_w = kRefSize * (220.0f / w_ref);
-            const float size_h = (h_ref > 0) ? (kRefSize * (140.0f / h_ref)) : size_w;
+            const float size_h = (h_ref > 0) ? (kRefSize * (160.0f / h_ref)) : size_w;
             target_size = static_cast<int32_t>(std::min(size_w, size_h));
-            target_size = std::clamp(target_size, (int32_t)60, (int32_t)260);
+            target_size = std::clamp(target_size, (int32_t)60, (int32_t)240);
         } else {
-            const float size_w = kRefSize * (240.0f / w_ref);
-            const float size_h = (h_ref > 0) ? (kRefSize * (110.0f / h_ref)) : size_w;
+            const float size_w = kRefSize * (248.0f / w_ref);
+            const float size_h = (h_ref > 0) ? (kRefSize * (220.0f / h_ref)) : size_w;
             target_size = static_cast<int32_t>(std::min(size_w, size_h));
             target_size = std::clamp(target_size, (int32_t)40, (int32_t)220);
         }
     } else {
         float scale = 1.0f;
         if (size_choice == "small") scale = 0.70f;
-        else if (size_choice == "large") scale = 1.30f;
-        else if (size_choice == "xlarge") scale = 1.60f;
-        else if (size_choice == "huge") scale = 2.00f;
+        else if (size_choice == "large") scale = 1.25f;
+        else if (size_choice == "xlarge") scale = 1.50f;
+        else if (size_choice == "huge") scale = 1.80f;
         else scale = 1.0f;
 
-        const float base_nominal = (is_stacked ? 160.0f : 80.0f) * scale;
+        const float base_nominal = (is_stacked ? 160.0f : 90.0f) * scale;
         target_size = static_cast<int32_t>(base_nominal);
 
-        const float max_w = is_stacked ? 250.0f : 256.0f;
-        const float max_h = is_stacked ? 150.0f : 120.0f;
+        const float max_w = is_stacked ? 240.0f : 258.0f;
+        const float max_h = is_stacked ? 170.0f : 230.0f;
         const float current_w = w_ref * (target_size / static_cast<float>(kRefSize));
         const float current_h = h_ref * (target_size / static_cast<float>(kRefSize));
 
@@ -287,7 +303,7 @@ int32_t ScreensaverController::calculate_fitted_custom_font_size(const String& l
             const int32_t clamped_by_h = static_cast<int32_t>(kRefSize * (max_h / h_ref));
             target_size = std::min(target_size, clamped_by_h);
         }
-        target_size = std::clamp(target_size, (int32_t)30, (int32_t)260);
+        target_size = std::clamp(target_size, (int32_t)30, (int32_t)240);
     }
 
     lv_tiny_ttf_set_size(custom_clock_font_, target_size);
@@ -684,13 +700,18 @@ void ScreensaverController::update_clock() {
     const lv_font_t* font = resolve_clock_font(layout, font_choice, size_choice);
     const bool font_changed = (lv_obj_get_style_text_font(hours_label_, LV_PART_MAIN) != font) ||
                               (font_choice != clock_font_choice_) ||
-                              (size_choice != clock_size_choice_);
+                              (size_choice != clock_size_choice_) ||
+                              (custom_clock_font_ && custom_clock_font_size_ != last_rendered_font_size_);
     clock_font_choice_ = font_choice;
     clock_size_choice_ = size_choice;
     if (font_changed) {
+        last_rendered_font_size_ = custom_clock_font_size_;
         lv_obj_set_style_text_font(colon_label_, font, 0);
         lv_obj_set_style_text_font(hours_label_, font, 0);
         lv_obj_set_style_text_font(minutes_label_, font, 0);
+        lv_obj_refresh_style(colon_label_, LV_PART_ANY, LV_STYLE_PROP_ANY);
+        lv_obj_refresh_style(hours_label_, LV_PART_ANY, LV_STYLE_PROP_ANY);
+        lv_obj_refresh_style(minutes_label_, LV_PART_ANY, LV_STYLE_PROP_ANY);
         if (layout == "stacked") {
             lv_obj_set_style_text_align(hours_label_, LV_TEXT_ALIGN_CENTER, 0);
             lv_obj_set_style_text_align(minutes_label_, LV_TEXT_ALIGN_CENTER, 0);
@@ -726,15 +747,10 @@ void ScreensaverController::update_clock() {
         if (half_gap < 35) half_gap = 35;
         if (half_gap > 95) half_gap = 95;
 
-        int16_t hours_y = -half_gap;
-        int16_t minutes_y = half_gap;
-        if (pos == "top") {
-            hours_y = -half_gap - 70;
-            minutes_y = half_gap - 70;
-        } else if (pos == "bottom") {
-            hours_y = -half_gap + 70;
-            minutes_y = half_gap + 70;
-        }
+        const uint8_t pos_y = selected_clock_pos_y();
+        const int16_t offset_y = static_cast<int16_t>((static_cast<int>(pos_y) - 50) * 2.0f);
+        const int16_t hours_y = -half_gap + offset_y;
+        const int16_t minutes_y = half_gap + offset_y;
 
         lv_obj_align(hours_label_, LV_ALIGN_CENTER, shift_x[idx], hours_y + shift_y[idx]);
         lv_obj_align(minutes_label_, LV_ALIGN_CENTER, shift_x[idx], minutes_y + shift_y[idx]);
@@ -743,12 +759,8 @@ void ScreensaverController::update_clock() {
         lv_obj_remove_flag(hours_label_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(minutes_label_, LV_OBJ_FLAG_HIDDEN);
 
-        int16_t base_y = 0;
-        if (pos == "top") {
-            base_y = -130;
-        } else if (pos == "bottom") {
-            base_y = 130;
-        }
+        const uint8_t pos_y = selected_clock_pos_y();
+        const int16_t base_y = static_cast<int16_t>((static_cast<int>(pos_y) - 50) * 3.4f);
 
         lv_obj_align(colon_label_, LV_ALIGN_CENTER, shift_x[idx], base_y + shift_y[idx]);
 

@@ -60,6 +60,7 @@ private:
 
     String selected_style() const;
     String selected_clock_position() const;
+    uint8_t selected_clock_pos_y() const;
     String selected_clock_layout() const;
     uint32_t selected_clock_color() const;
     String selected_clock_font() const;
@@ -68,6 +69,7 @@ private:
     uint32_t clock_color_ = 0xFFFFFF;
     String clock_font_choice_ = "montserrat";
     String clock_size_choice_ = "auto";
+    int32_t last_rendered_font_size_ = 0;
     uint8_t* clock_font_buffer_ = nullptr;
     size_t clock_font_size_ = 0;
     lv_font_t* custom_clock_font_ = nullptr;

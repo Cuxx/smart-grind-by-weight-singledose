@@ -53,6 +53,7 @@ struct Preferences {
     size_t putInt(const char*, int) { return ++writes == fail_write ? 0 : sizeof(int32_t); }
     size_t putFloat(const char*, float) { return ++writes == fail_write ? 0 : sizeof(float); }
     size_t putBool(const char*, bool) { return ++writes == fail_write ? 0 : sizeof(bool); }
+    size_t putUChar(const char*, uint8_t) { return ++writes == fail_write ? 0 : sizeof(uint8_t); }
     size_t putString(const char* key, const char* value) {
         if (++writes == fail_write) return 0;
         strings[ns + "/" + key] = value; return strlen(value);
@@ -141,7 +142,7 @@ int main() {
     strcpy(update.screensaver_style, "gaggimate");
     assert(api.apply_settings(update));
     const int total_writes = Preferences::writes, total_opens = Preferences::opens;
-    assert(total_writes == 23 && total_opens == 10);
+    assert(total_writes == 24 && total_opens == 10);
     assert(control.motor_response_latency_ms == 100 && control.coast_ratio_ == 2);
     // Applying a legacy form preserves the current panel-off values while
     // still using the checked persistence path.
